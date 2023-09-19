@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
 
     Visualizer::showFigures();
 
-    HW2::grade(algo, "nonhuman.biologic@myspace.edu", argc, argv);
+    HW2::grade(algo, "cohu8717@colorado.edu", argc, argv);
 
     return 0;
 }
