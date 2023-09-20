@@ -2,7 +2,7 @@
 
 bool operator==(Eigen::Vector2d a, Eigen::Vector2d b)
 {
-    if(((abs(a[0] - b[0]) < 0.0001) && (abs(a[1] - b[1]) < 0.0001)))
+    if(((abs(a[0] - b[0]) < 1e-6) && (abs(a[1] - b[1]) < 1e-6)))
     {
         return true;
     }   
@@ -17,8 +17,9 @@ amp::Path2D MyBug1Algorithm::plan(const amp::Problem2D& problem)
     amp::Path2D dirPathToGoal;
     
     int numObs = problem.obstacles.size();
+    cout << "Pre obsPath \n";
     vector<amp::Path2D> obsPaths = MyBug1Algorithm::obsPaths(problem);
-
+    cout << "Post obsPath \n";
     bool reached = false;
     path.waypoints.push_back(problem.q_init);
     Eigen::Vector2d qG = problem.q_goal;
@@ -30,9 +31,10 @@ amp::Path2D MyBug1Algorithm::plan(const amp::Problem2D& problem)
     {
         qL_Next = nextStep(qL,qG);
         qH = collisionCheck(numObs, obsPaths, qL_Next);
-
+        cout << "Pre Q Hit\n";
         if(qH.hit)
         {
+            cout << "Q Hit\n";
             searchPath = objTraverse(numObs, obsPaths, qH, qG);
             for(int i = 0; i < searchPath.waypoints.size(); i++)
             {
@@ -40,7 +42,7 @@ amp::Path2D MyBug1Algorithm::plan(const amp::Problem2D& problem)
             }
             qL_Next = path.waypoints.back();   
         }
-
+        cout << "Post Q Hit\n";
         qL = qL_Next;
         if(qL == qG)
         {
@@ -81,23 +83,27 @@ vector<amp::Path2D> MyBug1Algorithm::obsPaths(const amp::Problem2D& problem)
 {
     int numObs = problem.obstacles.size();
     vector<amp::Path2D> paths;
+    vector<Eigen::Vector2d> objverts;
     vector<Eigen::Vector2d> verts;
     vector<Eigen::Vector2d> tmp;
     for(int i = 0; i < numObs; i++)
     {
         if(MyBug1Algorithm::turn == "left")
         {
-            verts = problem.obstacles[i].verticesCCW();
+            objverts = problem.obstacles[i].verticesCCW();
         }
         else
         {
-            verts = problem.obstacles[i].verticesCW();
+            objverts = problem.obstacles[i].verticesCW();
         }
+        verts = expandObstacle(objverts);
+        cout << "Exit expand\n";
         int numVerts = verts.size();
         amp::Path2D tmpPath;
         for(int i = 0; i < numVerts-1; i++)
         {
             tmp = MyBug1Algorithm::lines(verts[i],verts[i+1]).waypoints;
+            printf("size of edge %ld\n",tmp.size());
             for(int i = 0; i < tmp.size()-1; i++)
             {
                 tmpPath.waypoints.push_back(tmp[i]);
@@ -166,7 +172,8 @@ Eigen::Vector2d MyBug1Algorithm::nextStep(Eigen::Vector2d ptA, Eigen::Vector2d p
         Eigen::Vector2d qL = ptA;
         bool negXmove = qL[0] > ptB[0];
         bool negYmove = qL[1] > ptB[1];
-        if(abs(qL[0] - ptB[0]) > MyBug1Algorithm::eps){
+        if(abs(qL[0] - ptB[0]) > MyBug1Algorithm::eps)
+        {
             if(!negXmove)
             {
                 qL[0] += MyBug1Algorithm::step;
@@ -263,7 +270,7 @@ amp::Path2D MyBug1Algorithm::objTraverse(int numObs, vector<amp::Path2D> obsPath
             }
             q = obsPaths[obj].waypoints[objPoint];
 
-            qTmp = collisionCheck(numObs, obsPaths, q, obj);
+            qTmp = collisionCheck(numObs, obsPaths, q,  obj);
             if(qTmp.hit)
             {
                 objPoint = qTmp.hitItr;
@@ -283,4 +290,73 @@ amp::Path2D MyBug1Algorithm::objTraverse(int numObs, vector<amp::Path2D> obsPath
 double MyBug1Algorithm::calcDist(Eigen::Vector2d pt, Eigen::Vector2d goal)
 {
     return sqrt( pow((goal[0]-pt[0]),2) + pow(goal[1]-pt[1],2));
+}
+
+vector<Eigen::Vector2d> MyBug1Algorithm::expandObstacle(vector<Eigen::Vector2d> verts)
+{
+    vector<Eigen::Vector2d> newVerts;
+    double minX = verts[0][0];
+    double minY = verts[0][1];
+    double maxX = verts[0][0];
+    double maxY = verts[0][1];
+
+    for(int i = 0; i < verts.size(); i++)
+    {
+        if(minX > verts[i][0])
+        {
+            minX = verts[i][0];
+        }
+
+        if(minY > verts[i][1])
+        {
+            minY = verts[i][1];
+        }
+
+        if(maxX < verts[i][0])
+        {
+            maxX = verts[i][0];
+        }
+
+        if(maxY < verts[i][1])
+        {
+            maxY = verts[i][1];
+        }
+
+    }
+    printf("Verticies %ld MinX %3.2f MaxX %3.2f MinY %3.2f MaxY %3.2f\n",verts.size(),minX,maxX,minY,maxY);
+    Eigen::Vector2d qL(minX+(maxX-minX)/2,minY+(maxY-minY)/2);
+    printf("Center (%3.2f,%3.2f)\n", qL[0], qL[1]);
+    Eigen::Vector2d tmpVec;
+    for(int i = 0; i < verts.size(); i++)
+    {    
+        bool negXmove = qL[0] > verts[i][0];
+        bool negYmove = qL[1] > verts[i][1];
+        if(abs(qL[0] - verts[i][0]) > MyBug1Algorithm::eps)
+        {
+            if(!negXmove)
+            {
+                tmpVec[0] = verts[i][0]+MyBug1Algorithm::step;
+            }
+            else
+            {
+                tmpVec[0] = verts[i][0]-MyBug1Algorithm::step;
+            }
+        }
+
+        if(abs(qL[1] - verts[i][1]) > MyBug1Algorithm::eps)
+        {
+            if(!negYmove)
+            {
+                tmpVec[1] = verts[i][1]+MyBug1Algorithm::step;
+            }
+            else
+            {
+                tmpVec[1] = verts[i][1]-MyBug1Algorithm::step;
+            }
+        }
+        printf("Old Vert (%3.2f,%3.2f)\nNew Vert (%3.2f,%3.2f)\n\n",verts[i][0],verts[i][1],tmpVec[0],tmpVec[1]);
+        newVerts.push_back(tmpVec);
+    }
+    cout << "Return\n";
+    return newVerts;
 }

@@ -20,8 +20,8 @@ class MyBug1Algorithm : public amp::BugAlgorithm {
         virtual amp::Path2D plan(const amp::Problem2D& problem) override;
 
         // Add any other methods here...
-        double step = 0.1;
-        double eps = 0.0001;
+        double step = 0.01;
+        double eps = 1e-6;
         string turn = "left";
     
     private:
@@ -33,6 +33,7 @@ class MyBug1Algorithm : public amp::BugAlgorithm {
         Eigen::Vector2d nextStep(Eigen::Vector2d ptA, Eigen::Vector2d ptB);
         amp::Path2D objTraverse(int numObs, vector<amp::Path2D> obsPaths, qH travStart, Eigen::Vector2d goal);
         double calcDist(Eigen::Vector2d pt, Eigen::Vector2d goal);
-        Eigen::Vector2d ptSeperate(Eigen::Vector2d ptA, Eigen::Vector2d ptB, Eigen::Vector2d ptC);
+        Eigen::Vector2d objBuff(Eigen::Vector2d ptA, Eigen::Vector2d ptB, Eigen::Vector2d ptC);
+        vector<Eigen::Vector2d> expandObstacle(vector<Eigen::Vector2d> verts);
 
 };
