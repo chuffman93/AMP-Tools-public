@@ -1,26 +1,5 @@
 #include "MyBug1Algorithm.h"
 
-bool operator==(Eigen::Vector2d a, Eigen::Vector2d b)
-{
-    if(((abs(a[0] - b[0]) < 1e-3) && (abs(a[1] - b[1]) < 1e-3)))
-    {
-        return true;
-    }   
-    return false;
-}
-
-double round(double a)
-{
-    double ret;
-    char buff[40];
-
-    sprintf(buff,"%.2f",a);
-
-    sscanf(buff,"%lf",&ret);
-
-    return ret;
-}
-
 // Implement your methods in the `.cpp` file, for example:
 amp::Path2D MyBug1Algorithm::plan(const amp::Problem2D& problem) 
 {
@@ -35,10 +14,15 @@ amp::Path2D MyBug1Algorithm::plan(const amp::Problem2D& problem)
     Eigen::Vector2d qG = problem.q_goal;
     Eigen::Vector2d qL = problem.q_init;
     Eigen::Vector2d qL_Next;
-    qH qH;
+    MyBug1Algorithm::qH qH;
     amp::Path2D searchPath;
+    double num = (qG[1] - qL[1]);
+    double dom = (qG[0] - qL[0]);
+    MyBug1Algorithm::m = (qG[1] - qL[1]) / (qG[0] - qL[0]);
+    MyBug1Algorithm::b = (qG[1] - (m*qG[0]));
     while(!reached)
     {
+        //  printf("PRE STEP: qL (%.3f,%.3f)::qG (%.3f,%.3f)\n", qL[0], qL[1], qG[0], qG[1]);
         qL_Next = nextStep(qL,qG);
         qH = collisionCheck(numObs, obsPaths, qL_Next);
         if(qH.hit)
@@ -48,7 +32,17 @@ amp::Path2D MyBug1Algorithm::plan(const amp::Problem2D& problem)
             {
                 path.waypoints.push_back(searchPath.waypoints[i]);
             }
-            qL_Next = path.waypoints.back();   
+            qL = path.waypoints.back();
+            double num = (qG[1] - qL[1]);
+            double dom = (qG[0] - qL[0]);
+            MyBug1Algorithm::m = (qG[1] - qL[1]) / (qG[0] - qL[0]);
+            MyBug1Algorithm::b = (qG[1] - (m*qG[0]));
+            qL_Next = nextStep(qL,qG);    
+            if(qL_Next == qH.qh)
+            {
+                // printf("GOAL CAN'T BE REACHED\n");
+                return path;
+            }
         }
         qL = qL_Next;
         if(qL == qG)
@@ -71,9 +65,14 @@ amp::Path2D MyBug1Algorithm::lines(Eigen::Vector2d ptA, Eigen::Vector2d ptB)
     path.waypoints.push_back(start);
     Eigen::Vector2d qL = start;
     Eigen::Vector2d qL_Next;
+    double num = (ptB[1] - qL[1]);
+    double dom = (ptB[0] - qL[0]);
+    MyBug1Algorithm::m = (ptB[1] - qL[1]) / (ptB[0] - qL[0]);
+    MyBug1Algorithm::b = (ptB[1] - (m*ptB[0]));
     while(!reached)
     {
 
+        //  printf("PRE STEP LINES: qL (%.5f,%.5f)::qG (%.5f,%.5f)\n", qL[0], qL[1], goal[0], goal[1]);
         qL_Next = nextStep(qL, goal);
         qL = qL_Next;
         
@@ -108,6 +107,10 @@ vector<amp::Path2D> MyBug1Algorithm::obsPaths(const amp::Problem2D& problem)
         int numVerts = verts.size();
         amp::Path2D tmpPath;
         bool debug = false;
+        if(numVerts == 5)
+        {
+            debug = true;
+        }
         for(int i = 0; i < numVerts-1; i++)
         {
             tmp = MyBug1Algorithm::lines(verts[i],verts[i+1]).waypoints;
@@ -127,9 +130,9 @@ vector<amp::Path2D> MyBug1Algorithm::obsPaths(const amp::Problem2D& problem)
     return paths;
 }
 
-qH MyBug1Algorithm::collisionCheck(int numObs, vector<amp::Path2D> obsPaths, Eigen::Vector2d qL)
+MyBug1Algorithm::qH MyBug1Algorithm::collisionCheck(int numObs, vector<amp::Path2D> obsPaths, Eigen::Vector2d qL)
 {
-    qH qH;
+    MyBug1Algorithm::qH qH;
     qH.hit = false;
 
     for(int i = 0 ; i < numObs; i++)
@@ -149,9 +152,9 @@ qH MyBug1Algorithm::collisionCheck(int numObs, vector<amp::Path2D> obsPaths, Eig
     return qH;
 }
 
-qH MyBug1Algorithm::collisionCheck(int numObs, vector<amp::Path2D> obsPaths, Eigen::Vector2d qL, int currObj)
+MyBug1Algorithm::qH MyBug1Algorithm::collisionCheck(int numObs, vector<amp::Path2D> obsPaths, Eigen::Vector2d qL, int currObj)
 {
-    qH qH;
+    MyBug1Algorithm::qH qH;
     qH.hit = false;
 
     for(int i = 0 ; i < numObs; i++)
@@ -180,19 +183,23 @@ Eigen::Vector2d MyBug1Algorithm::nextStep(Eigen::Vector2d ptA, Eigen::Vector2d p
         Eigen::Vector2d qL = ptA;
         bool negXmove = qL[0] > ptB[0];
         bool negYmove = qL[1] > ptB[1];
-        if(abs(qL[0] - ptB[0]) > MyBug1Algorithm::eps)
-        {
-            if(!negXmove)
-            {
-                qL[0] += MyBug1Algorithm::step;
-            }
-            else
+        bool yLine = abs(qL[0] - ptB[0]) < MyBug1Algorithm::eps;
+        bool xLine = abs(qL[1] - ptB[1]) < MyBug1Algorithm::eps;
+        if(!yLine && !xLine)
+        {    
+            // printf("qL = (%.3f, %.3f) ptB = (%.3f, %.3f)\n", qL[0], qL[1], ptB[0], ptB[1]);
+            // printf("%.3fx+%.3f \n",MyBug1Algorithm::m,MyBug1Algorithm::b);
+            if(negXmove)
             {
                 qL[0] -= MyBug1Algorithm::step;
             }
+            else
+            {
+                qL[0] += MyBug1Algorithm::step;
+            }
+            qL[1] = round(m*qL[0] + b);
         }
-
-        if(abs(qL[1] - ptB[1]) > MyBug1Algorithm::eps)
+        else if(yLine)
         {
             if(!negYmove)
             {
@@ -203,15 +210,26 @@ Eigen::Vector2d MyBug1Algorithm::nextStep(Eigen::Vector2d ptA, Eigen::Vector2d p
                 qL[1] -= MyBug1Algorithm::step;
             }
         }
+        else
+        {
+            if(!negXmove)
+            {
+                qL[0] += MyBug1Algorithm::step;
+            }
+            else
+            {
+                qL[0] -= MyBug1Algorithm::step;
+            }
+        }
         return qL;
 }
 
-amp::Path2D MyBug1Algorithm::objTraverse(int numObs, vector<amp::Path2D> obsPaths, qH travStart, Eigen::Vector2d goal)
+amp::Path2D MyBug1Algorithm::objTraverse(int numObs, vector<amp::Path2D> obsPaths, MyBug1Algorithm::qH travStart, Eigen::Vector2d goal)
 {
     amp::Path2D pathToShortestPoint;
     Eigen::Vector2d q;
-    qH shortPoint;
-    qH qTmp;
+    MyBug1Algorithm::qH shortPoint;
+    MyBug1Algorithm::qH qTmp;
     double shortDist = 10000;
     
     double tmpDist;
@@ -343,11 +361,11 @@ vector<Eigen::Vector2d> MyBug1Algorithm::expandObstacle(vector<Eigen::Vector2d> 
         {
             if(!negXmove)
             {
-                tmpVec[0] = round(verts[i][0]+MyBug1Algorithm::step);
+                tmpVec[0] = round(verts[i][0]+MyBug1Algorithm::buffer);
             }
             else
             {
-                tmpVec[0] = round(verts[i][0]-MyBug1Algorithm::step);
+                tmpVec[0] = round(verts[i][0]-MyBug1Algorithm::buffer);
             }
         }
 
@@ -355,11 +373,11 @@ vector<Eigen::Vector2d> MyBug1Algorithm::expandObstacle(vector<Eigen::Vector2d> 
         {
             if(!negYmove)
             {
-                tmpVec[1] = round(verts[i][1]+MyBug1Algorithm::step);
+                tmpVec[1] = round(verts[i][1]+MyBug1Algorithm::buffer);
             }
             else
             {
-                tmpVec[1] = round(verts[i][1]-MyBug1Algorithm::step);
+                tmpVec[1] = round(verts[i][1]-MyBug1Algorithm::buffer);
             }
         }
         // printf("Old Vert (%3.2f,%3.2f)\nNew Vert (%3.2f,%3.2f)\n\n",verts[i][0],verts[i][1],tmpVec[0],tmpVec[1]);

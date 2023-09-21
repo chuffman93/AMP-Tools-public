@@ -5,13 +5,6 @@
 #include <cmath>
 using namespace std;
 
-struct qH
-{
-    int objNum;
-    int hitItr;
-    bool hit;
-    Eigen::Vector2d qh;
-};
 
 /// @brief Declare your bug algorithm class here. Note this class derives the bug algorithm class declared in HW2.h
 class MyBug1Algorithm : public amp::BugAlgorithm {
@@ -21,9 +14,19 @@ class MyBug1Algorithm : public amp::BugAlgorithm {
 
         // Add any other methods here...
         double step = 0.01;
+        double buffer = 0.01;
         double eps = 1e-3;
+        double m;
+        double b;
         string turn = "left";
     
+        struct qH
+        {
+            int objNum;
+            int hitItr;
+            bool hit;
+            Eigen::Vector2d qh;
+        };
     private:
         // Add any member variables here...
         amp::Path2D lines(Eigen::Vector2d ptA, Eigen::Vector2d ptB);
