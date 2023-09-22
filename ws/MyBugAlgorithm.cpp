@@ -47,7 +47,7 @@ amp::Path2D MyBugAlgorithm::plan(const amp::Problem2D& problem) {
 
     path.waypoints.push_back(qL);
 
-    qL_Next = nextStep(qL, qG, step*5l);
+    qL_Next = nextStep(qL, qG, step*5);
 
     while(!found)
     {
