@@ -5,7 +5,7 @@
 #include "hw/HW2.h"
 
 // Include any custom headers you created in your workspace
-#include "MyBug1Algorithm.h"
+#include "MyBugAlgorithm.h"
 #include "MyBug2Algorithm.h"
 
 using namespace amp;
@@ -36,21 +36,21 @@ int main(int argc, char** argv) {
     */
 
     // Declare your algorithm object 
-    MyBug1Algorithm algo1;
+    MyBugAlgorithm algo1;
     MyBug2Algorithm algo2;
     
     // Bug 1
     {
-        // // Call your algorithm on the problem
-        // amp::Path2D path_1_w1 = algo1.plan(problem1);
+        // Call your algorithm on the problem
+        amp::Path2D path_1_w1 = algo1.plan(problem1);
 
-        // // Check your path to make sure that it does not collide with the environment 
-        // bool success = HW2::check(path_1_w1, problem1);
+        // Check your path to make sure that it does not collide with the environment 
+        bool success = HW2::check(path_1_w1, problem1);
 
-        // LOG("Found valid solution to workspace 1: " << (success ? "Yes!" : "No :("));
+        LOG("Found valid solution to workspace 1: " << (success ? "Yes!" : "No :("));
 
-        // // Visualize the path and environment
-        // Visualizer::makeFigure(problem1, path_1_w1);
+        // Visualize the path and environment
+        Visualizer::makeFigure(problem1, path_1_w1);
 
         // // Call your algorithm on the problem
         // amp::Path2D path_1_w2 = algo1.plan(problem2);
@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
         // Visualizer::makeFigure(problem2, path_2_w2);
     // }
 
-    // Let's get crazy and generate a random environment and test your algorithm
+    // // Let's get crazy and generate a random environment and test your algorithm
     // {
     //     amp::Path2D path; // Make empty path, problem, and collision points, as they will be created by generateAndCheck()
     //     amp::Problem2D random_prob; 
@@ -103,9 +103,9 @@ int main(int argc, char** argv) {
     //     Visualizer::makeFigure(random_prob, path, collision_points);
     // }
 
-    // Visualizer::showFigures();
+    Visualizer::showFigures();
 
-    HW2::grade(algo2, "cohu8717@colorado.edu", argc, argv);
+    // HW2::grade(algo2, "cohu8717@colorado.edu", argc, argv);
     
     /* If you want to reconstruct your bug algorithm object every trial (to reset member variables from scratch or initialize), use this method instead*/
     //HW2::grade<MyBugAlgorithm>("nonhuman.biologic@myspace.edu", argc, argv, constructor_parameter_1, constructor_parameter_2, etc...);

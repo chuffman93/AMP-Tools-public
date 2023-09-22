@@ -14,7 +14,7 @@ class MyBug1Algorithm : public amp::BugAlgorithm {
 
         // Add any other methods here...
         double step = 0.01;
-        double buffer = 0.01;
+        double buffer = 0.02;
         double eps = 1e-3;
         double m;
         double b;
