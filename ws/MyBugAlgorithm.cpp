@@ -409,7 +409,17 @@ MyBugAlgorithm::qH MyBugAlgorithm::followObstacle(Eigen::Vector2d q, amp::Obstac
     Eigen::Vector2d ptB1 = objverts[verItr];    
     Eigen::Vector2d ptC1 = objverts[nxtVert];   
 
+    Eigen::Vector2d intPt;
+
     if(debug) printf("Moving from point (%.6f, %.6f) to vert %d [%d] %d (%.6f, %.6f) on object %d\n", q[0], q[1], prevVert, verItr, nxtVert, ptB1[0], ptB1[1], objNumber);
+
+    Eigen::Vector2d mxTrav = calTravLine(ptA1,ptB1,q);
+    Eigen::Vector2d mxRef = calLine(ptA1,ptB1);
+    Eigen::Vector2d mxNxt = calLine(ptB1,ptC1);
+
+    Eigen::Vector2d mxLn1;
+    Eigen::Vector2d mxLn2;
+    Eigen::Vector2d mxLnTrav;
 
     bool negXmove = compDoubles(ptA1[0], ptB1[0], "gt");
     bool negYmove = compDoubles(ptA1[1], ptB1[1], "gt");
@@ -439,6 +449,16 @@ MyBugAlgorithm::qH MyBugAlgorithm::followObstacle(Eigen::Vector2d q, amp::Obstac
             }
             
         }
+        else
+        {
+            mxLn2 = calLine(ptB1,ptC1);
+            intpt[0] = q[0];
+            intPt[1] = mxLn2[0] * intPt[0] + mxLn2[1];
+            nextLine = (negXmove ? compDoubles(intPt[0], q[0],"gt") : compDoubles(intPt[0], q[0],"gt")) 
+                    && (negYmove ? compDoubles(intPt[1], q[1],"gt") : compDoubles(intPt[1], q[1],"gt"));
+
+        }
+
         if(nextLine)
         {
             if(debug) printf("NEXT LINE X AXIS\n");
@@ -452,6 +472,10 @@ MyBugAlgorithm::qH MyBugAlgorithm::followObstacle(Eigen::Vector2d q, amp::Obstac
                 nextPt.qh[0] -= MyBugAlgorithm::step;
             }
             nextPt.vertDir = nxtVert;
+        }
+        else if(nextLine && !nxtxLine)
+        {
+
         }
         else
         {
@@ -486,6 +510,15 @@ MyBugAlgorithm::qH MyBugAlgorithm::followObstacle(Eigen::Vector2d q, amp::Obstac
             }
             
         }
+        else
+        {
+            mxLn2 = calLine(ptB1,ptC1);
+            intpt[0] = q[0];
+            intPt[1] = mxLn2[0] * intPt[0] + mxLn2[1];
+            nextLine = (negXmove ? compDoubles(intPt[0], q[0],"gt") : compDoubles(intPt[0], q[0],"lt")) 
+                    && (negYmove ? compDoubles(intPt[1], q[1],"gt") : compDoubles(intPt[1], q[1],"lt"));
+        }
+
         if(nextLine)
         {
             if(debug) printf("NEXT LINE Y AXIS\n");
@@ -501,6 +534,10 @@ MyBugAlgorithm::qH MyBugAlgorithm::followObstacle(Eigen::Vector2d q, amp::Obstac
             }
             nextPt.vertDir = nxtVert;
         }
+        else if(nextLine && !nxtyLine)
+        {
+
+        }
         else
         {
             if(debug) printf("SAME LINE X AXIS\n");
@@ -515,7 +552,141 @@ MyBugAlgorithm::qH MyBugAlgorithm::followObstacle(Eigen::Vector2d q, amp::Obstac
 
         }
     }
+    else
+    {
+        if(nxtyLine)
+        {
+            if(negXmove)
+            {
+                if(compDoubles(ptC1[0],q[0],"gt"))
+                {
+                    nextLine = true;
+                }
+            }
+            else
+            {
+                if(compDoubles(ptC1[0],q[0],"lt"))
+                {
+                    nextLine = true;
+                }
+            }
+            
+        }
+        else if(nxtxLine)
+        {
+            if(negYmove)
+            {
+                if(compDoubles(ptC1[1], q[1],"gt"))
+                {
+                    nextLine = true;                    
+                }
+            }
+            else
+            {
+                if(compDoubles(ptC1[1], q[1],"lt"))
+                {
+                    nextLine = true;   
+                }
+            }
+            
+        }
+        else
+        {
+            mxLn2 = calLine(ptB1,ptC1);
+            intpt[0] = q[0];
+            intPt[1] = mxLn2[0] * intPt[0] + mxLn2[1];
+            nextLine = (negXmove ? compDoubles(intPt[0], q[0],"gt") : compDoubles(intPt[0], q[0],"gt")) 
+                    && (negYmove ? compDoubles(intPt[1], q[1],"gt") : compDoubles(intPt[1], q[1],"gt"));
+        }
+
+        if(nextLine && nxtyLine)
+        {
+            if(debug) printf("NEXT LINE Y AXIS\n");
+            negYmove = compDoubles(ptB1[1], ptC1[1], "gt");
+
+            if(!negYmove)
+            {
+                nextPt.qh[1] += MyBugAlgorithm::step;
+            }
+            else
+            {
+                nextPt.qh[1] -= MyBugAlgorithm::step;
+            }
+            nextPt.vertDir = nxtVert;
+        }
+        else if(nextLine && nxtxLine)
+        {
+            if(debug) printf("NEXT LINE X AXIS\n");
+            negXmove = compDoubles(ptB1[0], ptC1[0], "gt");
+            if(!negXmove)
+            {
+                nextPt.qh[0] += MyBugAlgorithm::step;
+            }
+            else
+            {
+                nextPt.qh[0] -= MyBugAlgorithm::step;
+            }
+            nextPt.vertDir = nxtVert;
+        }
+        else if(nextLine)
+        {
+
+        }
+        else
+        {
+            
+        }
+    }
     if(debug) printf("Next Point = (%.6f, %.6f)\n", nextPt.qh[0], nextPt.qh[1]);
     // if(debug) usleep(1e4);
     return nextPt;
+}
+
+Eigen::Vector2d MyBugAlgorithm::interCeptPt(Eigen::Vector2d mx1, Eigen::Vector2d mx2)
+{
+    Eigen::Vector2d ret;
+
+    ret[0] = (mx2[1] - mx1[1])  / (mx1[0] - mx2[0]);
+    ret[1] = (mx1[1] - mx2[1])  / (mx1[0] - mx2[0]);
+
+    return ret;
+}
+
+Eigen::Vector2d MyBugAlgorithm::calTravLine(Eigen::Vector2d ptA1, Eigen::Vector2d ptB1, Eigen::Vector2d qL)
+{
+    Eigen::Vector2d mx = calLine(ptA1, ptB1);
+    Eigen::Vector2d mxRet;
+
+    double d = 0.01;
+
+    mxRet[0] = mx[0];
+
+    double dir = lineDirection(ptA1, ptB1, qL);
+
+    double posNeg = dir*mx[0];
+
+    double b1 = ((d*(sqrt(1+pow(mx[0],2)))) - mx[1]) * -1;
+    double b2 = ((d*(sqrt(1+pow(mx[0],2)))) + mx[1]);
+
+    if(posNeg < 0)
+    {
+        mxRet[1] = (b1 < 0) ? b1 : b2;
+    }
+    else
+    {
+        mxRet[1] = (b1 > 0) ? b1 : b2;
+    }
+
+
+    return mxRet;
+
+}
+
+Eigen::Vector2d MyBugAlgorithm::calLine(Eigen::Vector2d ptA1, Eigen::Vector2d ptB1)
+{
+    Eigen::Vector2d mx;
+    mx[0] = ((ptB1[1] - ptA1[1]) / (ptB1[0] - ptA1[0]));
+    mx[1] = (ptB1[1] - (m*ptB1[0]));
+    return mx;
+
 }

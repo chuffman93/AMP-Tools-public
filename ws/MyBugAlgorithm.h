@@ -39,5 +39,8 @@ class MyBugAlgorithm : public amp::BugAlgorithm {
         bool goalOverreach(Eigen::Vector2d ptA1, Eigen::Vector2d ptA2, Eigen::Vector2d goal);
         amp::Path2D objTraverse(vector<amp::Obstacle2D> obstacles, qH travStart, Eigen::Vector2d goal);
         qH followObstacle(Eigen::Vector2d q, amp::Obstacle2D obstacle, int verItr, int objNumber);
+        Eigen::Vector2d interCeptPt(Eigen::Vector2d ptA1, Eigen::Vector2d ptA2, Eigen::Vector2d ptB1,  Eigen::Vector2d ptB2);
+        Eigen::Vector2d calTravLine(Eigen::Vector2d ptA1, Eigen::Vector2d ptB1, Eigen::Vector2d qL);
+        Eigen::Vector2d calLine(Eigen::Vector2d ptA1, Eigen::Vector2d ptB1);
 
 };
