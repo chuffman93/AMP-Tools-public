@@ -52,16 +52,16 @@ int main(int argc, char** argv) {
         // Visualize the path and environment
         Visualizer::makeFigure(problem1, path_1_w1);
 
-        // // Call your algorithm on the problem
-        // amp::Path2D path_1_w2 = algo1.plan(problem2);
+        // Call your algorithm on the problem
+        amp::Path2D path_1_w2 = algo1.plan(problem2);
 
-        // // Check your path to make sure that it does not collide with the environment 
-        // success = HW2::check(path_1_w2, problem2);
+        // Check your path to make sure that it does not collide with the environment 
+        success = HW2::check(path_1_w2, problem2);
 
-        // LOG("Found valid solution to workspace 2: " << (success ? "Yes!" : "No :("));
+        LOG("Found valid solution to workspace 2: " << (success ? "Yes!" : "No :("));
 
-        // // Visualize the path and environment
-        // Visualizer::makeFigure(problem2, path_1_w2);
+        // Visualize the path and environment
+        Visualizer::makeFigure(problem2, path_1_w2);
     }
 
     // // Bug 2

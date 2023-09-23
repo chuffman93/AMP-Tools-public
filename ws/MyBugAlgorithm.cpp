@@ -74,7 +74,7 @@ amp::Path2D MyBugAlgorithm::plan(const amp::Problem2D& problem) {
     {
         if((goalOverreach(qL, qL_Next, qG) == 1.0) && !goalDet)
         {
-            printf("Goal almost over shot!\n");
+            if(debug) printf("Goal almost over shot!\n");
             goalDet = true;
             
         }
@@ -85,23 +85,23 @@ amp::Path2D MyBugAlgorithm::plan(const amp::Problem2D& problem) {
         }
         else
         {
-            qL_Next = nextStep(qL, qG, step*5);
+            qL_Next = nextStep(qL, qG, step);
         }
-        printf("qL = (%.6f,%.6f) and qL_Next = (%.6f,%.6f)\n",qL[0],qL[1],qL_Next[0],qL_Next[1]);        
+        if(debug) printf("qL = (%.6f,%.6f) and qL_Next = (%.6f,%.6f)\n",qL[0],qL[1],qL_Next[0],qL_Next[1]);        
         qh = collisionCheck(obstacles, qL, qL_Next, -1);
         if(qh.hit)
         {
-            printf("Approaching Object!!\n");
+            if(debug) printf("Approaching Object!!\n");
             objDet = true;
         }
         while(objDet)
         {
             qL_Next = nextStep(qL, qG, step);
             qh = collisionCheck(obstacles, qL, qL_Next, -1);
-            printf("Obj Approach qL = (%.6f,%.6f) and qL_Next = (%.6f,%.6f)\n",qL[0],qL[1],qL_Next[0],qL_Next[1]); 
+            if(debug) printf("Obj Approach qL = (%.6f,%.6f) and qL_Next = (%.6f,%.6f)\n",qL[0],qL[1],qL_Next[0],qL_Next[1]); 
             if(qh.hit)
             {
-                printf("OBJECT HECKIN' HIT\n");
+                if(debug) printf("OBJECT HECKIN' HIT\n");
                 objHit = true;
             }
             if(objHit)
@@ -119,7 +119,7 @@ amp::Path2D MyBugAlgorithm::plan(const amp::Problem2D& problem) {
                 break;
             }
             qL = qL_Next;
-            printf("Approaching Obj on the way to the goal (%.6f,%.6f), currently at (%.6f,%.6f)\n",qG[0],qG[1],qL[0],qL[1]);
+            if(debug) printf("Approaching Obj on the way to the goal (%.6f,%.6f), currently at (%.6f,%.6f)\n",qG[0],qG[1],qL[0],qL[1]);
             path.waypoints.push_back(qL);
         }
 
@@ -129,7 +129,7 @@ amp::Path2D MyBugAlgorithm::plan(const amp::Problem2D& problem) {
             found = true;
         }
 
-        // printf("Marching along to the goal (%.6f,%.6f), currently at (%.6f,%.6f)\n",qG[0],qG[1],qL[0],qL[1]);
+        // if(debug) printf("Marching along to the goal (%.6f,%.6f), currently at (%.6f,%.6f)\n",qG[0],qG[1],qL[0],qL[1]);
         path.waypoints.push_back(qL);
     }
     
@@ -137,7 +137,7 @@ amp::Path2D MyBugAlgorithm::plan(const amp::Problem2D& problem) {
 }
 bool MyBugAlgorithm::goalOverreach(Eigen::Vector2d ptA1, Eigen::Vector2d ptA2, Eigen::Vector2d goal)
 {
-    return ( abs((calcDist(ptA1,goal) + calcDist(ptA2,goal)) - calcDist(ptA1,ptA2)) < MyBugAlgorithm::eps );
+    return ( (abs((calcDist(ptA1,goal) + calcDist(ptA2,goal)) - calcDist(ptA1,ptA2))) < 1e-6 );
 }
 
 Eigen::Vector2d MyBugAlgorithm::nextStep(Eigen::Vector2d ptA, Eigen::Vector2d ptB, double stepSize)
@@ -149,8 +149,8 @@ Eigen::Vector2d MyBugAlgorithm::nextStep(Eigen::Vector2d ptA, Eigen::Vector2d pt
         bool xLine = abs(qL[1] - ptB[1]) < MyBugAlgorithm::eps;
         if(!yLine && !xLine)
         {    
-            // printf("qL = (%.6f, %.6f) ptB = (%.6f, %.6f)\n", qL[0], qL[1], ptB[0], ptB[1]);
-            // printf("%.6fx+%.6f \n",MyBugAlgorithm::m,MyBugAlgorithm::b);
+            // if(debug) printf("qL = (%.6f, %.6f) ptB = (%.6f, %.6f)\n", qL[0], qL[1], ptB[0], ptB[1]);
+            // if(debug) printf("%.6fx+%.6f \n",MyBugAlgorithm::m,MyBugAlgorithm::b);
             if(negXmove)
             {
                 qL[0] -= stepSize;
@@ -212,15 +212,17 @@ bool MyBugAlgorithm::intersectCheck(Eigen::Vector2d ptA1, Eigen::Vector2d ptB1, 
     double d3 = lineDirection(ptA2, ptB2, ptA1);
     double d4 = lineDirection(ptA2, ptB2, ptB1);
 
-    // printf("Testing intersection between[(%.6f,%.6f),(%.6f,%.6f)] and [(%.6f,%.6f),(%.6f,%.6f)]\n",ptA1[0],ptA1[1],ptB1[0],ptB1[1],ptA2[0],ptA2[1],ptB2[0],ptB2[1]);
+    // if(debug) printf("Testing intersection between[(%.6f,%.6f),(%.6f,%.6f)] and [(%.6f,%.6f),(%.6f,%.6f)]\n",ptA1[0],ptA1[1],ptB1[0],ptB1[1],ptA2[0],ptA2[1],ptB2[0],ptB2[1]);
 
     if( ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0)) )
     {
+        if(debug) printf("Intersecting Lines A1(%.6f,%.6f), B1(%.6f,%.6f), A2(%.6f,%.6f), B2(%.6f,%.6f)\n", ptA1[0], ptA1[1], ptB1[0], ptB1[1], ptA2[0], ptA2[1], ptB2[0], ptB2[1]);
         return true;
     }
 
     if(collinearAndOverlapping(ptA1,ptB1,ptA2,ptB2) || collinearAndOverlapping(ptA2,ptB2,ptA1,ptB1))
     {
+        if(debug) printf("Collinear and Overlapping A1(%.6f,%.6f), B1(%.6f,%.6f), A2(%.6f,%.6f), B2(%.6f,%.6f)\n", ptA1[0], ptA1[1], ptB1[0], ptB1[1], ptA2[0], ptA2[1], ptB2[0], ptB2[1]);
         return true;
     }
 
@@ -252,6 +254,7 @@ MyBugAlgorithm::qH MyBugAlgorithm::collisionCheck(vector<amp::Obstacle2D> obstac
         {
             if(intersectCheck(objverts[j],objverts[j+1],qL,qLNext) || objverts[j] == qLNext || goalOverreach(objverts[j],objverts[j+1],qLNext))
             {
+                if(debug) printf("Found Collision!! target vert (%.6f,%.6f), trail vert (%.6f,%.6f), qL (%.6f,%.6f), qlNext (%.6f,%.6f)\n", objverts[j+1][0], objverts[j+1][1], objverts[j][0], objverts[j][1], qL[0], qL[1], qLNext[0], qLNext[1]);
                 ret.objNum = i;
                 ret.vertDir = j+1;
                 ret.hit = true;
@@ -261,6 +264,7 @@ MyBugAlgorithm::qH MyBugAlgorithm::collisionCheck(vector<amp::Obstacle2D> obstac
         }
         if(intersectCheck(objverts.back(),objverts.front(),qL,qLNext) || objverts.back() == qLNext || goalOverreach(objverts.back(),objverts.front(),qLNext))
         {
+            if(debug) printf("Front: Found Collision!! target vert (%.6f,%.6f), trail vert (%.6f,%.6f), qL (%.6f,%.6f), qlNext (%.6f,%.6f)\n", objverts.front()[0], objverts.front()[0], objverts.back()[0], objverts.back()[1], qL[0], qL[1], qLNext[0], qLNext[1]);
             ret.objNum = i;
             ret.vertDir = 0;
             ret.hit = true;
@@ -301,7 +305,7 @@ amp::Path2D MyBugAlgorithm::objTraverse(vector<amp::Obstacle2D> obstacles, qH tr
 
     int pathLen = 1;
     int lenToShort;
-    printf("---------- Transversing Object ----------\n");
+    if(debug) printf("---------- Transversing Object ----------\n");
     while(!fullTraversed || !shortPoint)
     {
         
@@ -311,7 +315,9 @@ amp::Path2D MyBugAlgorithm::objTraverse(vector<amp::Obstacle2D> obstacles, qH tr
             qTmp = collisionCheck(obstacles, q, qN.qh, obj);
             if(qTmp.hit)
             {
-                printf("collision!!\n");
+                
+                if(debug) printf("collision!! moving from (%.6f,%.6f) to potenionally (%.6f,%.6f)\n", q[0], q[1], qN.qh[0], qN.qh[1]);
+                if(debug) sleep(5);
                 toVert = qTmp.vertDir;
                 obj = qTmp.objNum;
                 qN.vertDir = qTmp.vertDir;
@@ -322,26 +328,29 @@ amp::Path2D MyBugAlgorithm::objTraverse(vector<amp::Obstacle2D> obstacles, qH tr
             {
                 toVert = qN.vertDir;
             }
-            q = qN.qh;
-            if(q == travStart.qh)
+            if(!qTmp.hit)
             {
-                printf("Object Fully Traversed q = (%.6f,%.6f), start = (%.6f,%.6f)\n", q[0], q[1], travStart.qh[0], travStart.qh[1]);
-                sleep(5);
-                fullTraversed = true;
-            }
-            
-            ret.waypoints.push_back(q);
-            pathLen+=1;
-            tmpDist = calcDist(q,goal);
-            if (tmpDist < shortDist)
-            {
-                lenToShort = pathLen;
-                shortDist = tmpDist;
+                 q = qN.qh;
+                if((abs(q[0] - travStart.qh[0]) < 1e-2) && (abs(q[1] - travStart.qh[1]) < 1e-2) && !compDoubles(shortDist, 10000, "eq"))
+                {
+                    if(debug) printf("Object Fully Traversed q = (%.6f,%.6f), start = (%.6f,%.6f)\n", q[0], q[1], travStart.qh[0], travStart.qh[1]);
+                    if(debug) sleep(5);
+                    fullTraversed = true;
+                }
+                
+                ret.waypoints.push_back(q);
+                pathLen+=1;
+                tmpDist = calcDist(q,goal);
+                if (tmpDist < shortDist)
+                {
+                    lenToShort = pathLen;
+                    shortDist = tmpDist;
+                }
             }
         }
         else
         {
-            printf("Going to Shortest Point @ (%.3f,%.3f) with Distance %.3f\n", ret.waypoints[lenToShort-1][0],ret.waypoints[lenToShort-1][1], shortDist);
+            if(debug) printf("Going to Shortest Point @ (%.3f,%.3f) with Distance %.3f\n", ret.waypoints[lenToShort-1][0],ret.waypoints[lenToShort-1][1], shortDist);
             for(int i = 0; i < lenToShort; i++)
             {
                 ret.waypoints.push_back(ret.waypoints[i]);   
@@ -350,7 +359,7 @@ amp::Path2D MyBugAlgorithm::objTraverse(vector<amp::Obstacle2D> obstacles, qH tr
         }
         
     }
-    printf("---------- Done Transversing ----------\n");
+    if(debug) printf("---------- Done Transversing ----------\n");
     return ret;
 }
 
@@ -400,7 +409,7 @@ MyBugAlgorithm::qH MyBugAlgorithm::followObstacle(Eigen::Vector2d q, amp::Obstac
     Eigen::Vector2d ptB1 = objverts[verItr];    
     Eigen::Vector2d ptC1 = objverts[nxtVert];   
 
-    printf("Moving from point (%.6f, %.6f) to vert %d [%d] %d (%.6f, %.6f) on object %d\n", q[0], q[1], prevVert, verItr, nxtVert, ptB1[0], ptB1[1], objNumber);
+    if(debug) printf("Moving from point (%.6f, %.6f) to vert %d [%d] %d (%.6f, %.6f) on object %d\n", q[0], q[1], prevVert, verItr, nxtVert, ptB1[0], ptB1[1], objNumber);
 
     bool negXmove = compDoubles(ptA1[0], ptB1[0], "gt");
     bool negYmove = compDoubles(ptA1[1], ptB1[1], "gt");
@@ -432,7 +441,7 @@ MyBugAlgorithm::qH MyBugAlgorithm::followObstacle(Eigen::Vector2d q, amp::Obstac
         }
         if(nextLine)
         {
-            printf("NEXT LINE X AXIS\n");
+            if(debug) printf("NEXT LINE X AXIS\n");
             negXmove = compDoubles(ptB1[0], ptC1[0], "gt");
             if(!negXmove)
             {
@@ -446,7 +455,7 @@ MyBugAlgorithm::qH MyBugAlgorithm::followObstacle(Eigen::Vector2d q, amp::Obstac
         }
         else
         {
-            printf("SAME LINE Y AXIS\n");
+            if(debug) printf("SAME LINE Y AXIS\n");
             if(!negYmove)
             {
                 nextPt.qh[1] += MyBugAlgorithm::step;
@@ -479,7 +488,7 @@ MyBugAlgorithm::qH MyBugAlgorithm::followObstacle(Eigen::Vector2d q, amp::Obstac
         }
         if(nextLine)
         {
-            printf("NEXT LINE Y AXIS\n");
+            if(debug) printf("NEXT LINE Y AXIS\n");
             negYmove = compDoubles(ptB1[1], ptC1[1], "gt");
 
             if(!negYmove)
@@ -494,7 +503,7 @@ MyBugAlgorithm::qH MyBugAlgorithm::followObstacle(Eigen::Vector2d q, amp::Obstac
         }
         else
         {
-            printf("SAME LINE X AXIS\n");
+            if(debug) printf("SAME LINE X AXIS\n");
             if(!negXmove)
             {
                 nextPt.qh[0] += MyBugAlgorithm::step;
@@ -506,7 +515,7 @@ MyBugAlgorithm::qH MyBugAlgorithm::followObstacle(Eigen::Vector2d q, amp::Obstac
 
         }
     }
-    printf("Next Point = (%.6f, %.6f)\n", nextPt.qh[0], nextPt.qh[1]);
-    usleep(1e4);
+    if(debug) printf("Next Point = (%.6f, %.6f)\n", nextPt.qh[0], nextPt.qh[1]);
+    // if(debug) usleep(1e4);
     return nextPt;
 }
