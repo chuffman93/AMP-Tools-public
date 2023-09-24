@@ -42,7 +42,7 @@ amp::Path2D MyBug2Algorithm::plan(const amp::Problem2D& problem)
     MyBug2Algorithm::b = (qG[1] - (m*qG[0]));
     while(!reached)
     {
-        // printf("PLANNING STEP: qL (%.3f,%.3f)::qG (%.3f,%.3f)\n", qL[0], qL[1], qG[0], qG[1]);
+       // printf("PLANNING STEP: qL (%.3f,%.3f)::qG (%.3f,%.3f)\n", qL[0], qL[1], qG[0], qG[1]);
         qL_Next = nextStep(qL,qG);
         qH = collisionCheck(numObs, obsPaths, qL_Next);
         if(qH.hit)
@@ -57,7 +57,7 @@ amp::Path2D MyBug2Algorithm::plan(const amp::Problem2D& problem)
             qL_Next = nextStep(qL,qG);
             if(qL_Next == qH.qh)
             {
-                // printf("GOAL CAN'T BE REACHED\n");
+               // printf("GOAL CAN'T BE REACHED\n");
                 return path;
             }
 
@@ -69,7 +69,7 @@ amp::Path2D MyBug2Algorithm::plan(const amp::Problem2D& problem)
         }
         path.waypoints.push_back(qL);
     } 
-    // printf("GOAL REACHED!!\n");
+   // printf("GOAL REACHED!!\n");
     return path;
 }
 
@@ -90,7 +90,7 @@ amp::Path2D MyBug2Algorithm::lines(Eigen::Vector2d ptA, Eigen::Vector2d ptB)
     while(!reached)
     {
 
-        // printf("PRE STEP LINES: qL (%.2f,%.2f)::qG (%.2f,%.2f)\n", qL[0], qL[1], goal[0], goal[1]);
+       // printf("PRE STEP LINES: qL (%.2f,%.2f)::qG (%.2f,%.2f)\n", qL[0], qL[1], goal[0], goal[1]);
         qL_Next = nextStep(qL, goal);
         qL = qL_Next;
         
@@ -132,7 +132,7 @@ vector<amp::Path2D> MyBug2Algorithm::obsPaths(const amp::Problem2D& problem)
         for(int i = 0; i < numVerts-1; i++)
         {
             tmp = MyBug2Algorithm::lines(verts[i],verts[i+1]).waypoints;
-            // printf("size of edge %ld\n",tmp.size());
+           // printf("size of edge %ld\n",tmp.size());
             for(int i = 0; i < tmp.size()-1; i++)
             {
                 tmpPath.waypoints.push_back(tmp[i]);
@@ -205,8 +205,8 @@ Eigen::Vector2d MyBug2Algorithm::nextStep(Eigen::Vector2d ptA, Eigen::Vector2d p
         bool xLine = abs(qL[1] - ptB[1]) < MyBug2Algorithm::eps;
         if(!yLine && !xLine)
         {    
-            // printf("qL = (%.3f, %.3f) ptB = (%.3f, %.3f)\n", qL[0], qL[1], ptB[0], ptB[1]);
-            // printf("%.3fx+%.3f \n",MyBug2Algorithm::m,MyBug2Algorithm::b);
+           // printf("qL = (%.3f, %.3f) ptB = (%.3f, %.3f)\n", qL[0], qL[1], ptB[0], ptB[1]);
+           // printf("%.3fx+%.3f \n",MyBug2Algorithm::m,MyBug2Algorithm::b);
             if(negXmove)
             {
                 qL[0] -= MyBug2Algorithm::step;
@@ -276,11 +276,11 @@ amp::Path2D MyBug2Algorithm::objTraverse(int numObs, vector<amp::Path2D> obsPath
             obj = qTmp.objNum;
             ptMax = obsPaths[obj].waypoints.size();
         }
-        // printf("EXPLORING STEP: qL (%.3f,%.3f)::qG (%.3f,%.3f)\n", q[0], q[1], goal[0], goal[1]);
+       // printf("EXPLORING STEP: qL (%.3f,%.3f)::qG (%.3f,%.3f)\n", q[0], q[1], goal[0], goal[1]);
         atMLine = checkMLine(q);
         if(atMLine)
         {
-            // printf("*****MLINE HIT*****\n");
+           // printf("*****MLINE HIT*****\n");
             vector<Eigen::Vector2d> tmpPath =   obsPaths[obj].waypoints;
             double currDis = calcDist(q,goal);
             double tmpDis;
@@ -302,7 +302,7 @@ amp::Path2D MyBug2Algorithm::objTraverse(int numObs, vector<amp::Path2D> obsPath
             }
             if(q == travStart.qh)
             {
-                // printf("******** MADE MY WAY ALL AROUND ***********\n");
+               // printf("******** MADE MY WAY ALL AROUND ***********\n");
                 break;
             }
         }
@@ -355,9 +355,9 @@ vector<Eigen::Vector2d> MyBug2Algorithm::expandObstacle(vector<Eigen::Vector2d> 
         }
 
     }
-    // printf("Verticies %ld MinX %3.2f MaxX %3.2f MinY %3.2f MaxY %3.2f\n",verts.size(),minX,maxX,minY,maxY);
+   // printf("Verticies %ld MinX %3.2f MaxX %3.2f MinY %3.2f MaxY %3.2f\n",verts.size(),minX,maxX,minY,maxY);
     Eigen::Vector2d qL(round(minX+(maxX-minX)/2), round(minY+(maxY-minY)/2));
-    // printf("Center (%3.2f,%3.2f)\n", qL[0], qL[1]);
+   // printf("Center (%3.2f,%3.2f)\n", qL[0], qL[1]);
     Eigen::Vector2d tmpVec;
     for(int i = 0; i < verts.size(); i++)
     {    
@@ -386,7 +386,7 @@ vector<Eigen::Vector2d> MyBug2Algorithm::expandObstacle(vector<Eigen::Vector2d> 
                 tmpVec[1] = round(verts[i][1]-MyBug2Algorithm::buffer);
             }
         }
-        // printf("Old Vert (%3.2f,%3.2f)\nNew Vert (%3.2f,%3.2f)\n\n",verts[i][0],verts[i][1],tmpVec[0],tmpVec[1]);
+       // printf("Old Vert (%3.2f,%3.2f)\nNew Vert (%3.2f,%3.2f)\n\n",verts[i][0],verts[i][1],tmpVec[0],tmpVec[1]);
         newVerts.push_back(tmpVec);
     }
     return newVerts;

@@ -5,14 +5,14 @@
 #include "hw/HW2.h"
 
 // Include any custom headers you created in your workspace
-#include "MyBugAlgorithm.h"
+#include "MyBug1Algorithm.h"
 #include "MyBug2Algorithm.h"
 
 using namespace amp;
 
 int main(int argc, char** argv) {
     /*    Include this line to have different randomized environments every time you run your code (NOTE: this has no affect on grade()) */
-    amp::RNG::seed(amp::RNG::randiUnbounded());
+    // amp::RNG::seed(amp::RNG::randiUnbounded());
 
     /*    Randomly generate the problem     */ 
 
@@ -36,11 +36,12 @@ int main(int argc, char** argv) {
     */
 
     // Declare your algorithm object 
-    MyBugAlgorithm algo1;
+    MyBug1Algorithm algo1;
     MyBug2Algorithm algo2;
     
     // Bug 1
     {
+        
         // Call your algorithm on the problem
         amp::Path2D path_1_w1 = algo1.plan(problem1);
 
@@ -48,6 +49,7 @@ int main(int argc, char** argv) {
         bool success = HW2::check(path_1_w1, problem1);
 
         LOG("Found valid solution to workspace 1: " << (success ? "Yes!" : "No :("));
+        LOG("path length: " << path_1_w1.length()); // 104.634
 
         // Visualize the path and environment
         Visualizer::makeFigure(problem1, path_1_w1);
@@ -59,13 +61,14 @@ int main(int argc, char** argv) {
         success = HW2::check(path_1_w2, problem2);
 
         LOG("Found valid solution to workspace 2: " << (success ? "Yes!" : "No :("));
+        LOG("path length: " << path_1_w2.length()); // 315.04
 
         // Visualize the path and environment
-        Visualizer::makeFigure(problem2, path_1_w2);
+         Visualizer::makeFigure(problem2, path_1_w2);
     }
 
-    // // Bug 2
-    // {
+    // Bug 2
+    {
         // // Call your algorithm on the problem
         // amp::Path2D path_2_w1 = algo2.plan(problem1);
 
@@ -73,6 +76,8 @@ int main(int argc, char** argv) {
         // bool success = HW2::check(path_2_w1, problem1);
 
         // LOG("Found valid solution to workspace 2: " << (success ? "Yes!" : "No :("));
+        // LOG("path length: " << path_2_w1.length()); // 52,5887
+
 
         // // Visualize the path and environment
         // Visualizer::makeFigure(problem1, path_2_w1);
@@ -84,28 +89,30 @@ int main(int argc, char** argv) {
         // success = HW2::check(path_2_w2, problem2);
 
         // LOG("Found valid solution to workspace 2: " << (success ? "Yes!" : "No :("));
+        // LOG("path length: " << path_2_w2.length()); // 422.92
+
 
         // // Visualize the path and environment
         // Visualizer::makeFigure(problem2, path_2_w2);
-    // }
+    }
 
-    // // Let's get crazy and generate a random environment and test your algorithm
-    // {
-    //     amp::Path2D path; // Make empty path, problem, and collision points, as they will be created by generateAndCheck()
-    //     amp::Problem2D random_prob; 
-    //     std::vector<Eigen::Vector2d> collision_points;
-    //     bool random_trial_success = HW2::generateAndCheck(algo2, path, random_prob, collision_points);
-    //     LOG("Found valid solution in random environment: " << (random_trial_success ? "Yes!" : "No :("));
+    // Let's get crazy and generate a random environment and test your algorithm
+    {
+        amp::Path2D path; // Make empty path, problem, and collision points, as they will be created by generateAndCheck()
+        amp::Problem2D random_prob; 
+        std::vector<Eigen::Vector2d> collision_points;
+        bool random_trial_success = HW2::generateAndCheck(algo1, path, random_prob, collision_points);
+        LOG("Found valid solution in random environment: " << (random_trial_success ? "Yes!" : "No :("));
 
-    //     LOG("path length: " << path.length());
+        LOG("path length: " << path.length()); // 17.9824 ~ 15.9129
 
-    //     // Visualize the path environment, and any collision points with obstacles
-    //     Visualizer::makeFigure(random_prob, path, collision_points);
-    // }
+        // Visualize the path environment, and any collision points with obstacles
+        Visualizer::makeFigure(random_prob, path, collision_points);
+    }
 
     Visualizer::showFigures();
 
-    // HW2::grade(algo2, "cohu8717@colorado.edu", argc, argv);
+    HW2::grade(algo1, "cohu8717@colorado.edu", argc, argv);
     
     /* If you want to reconstruct your bug algorithm object every trial (to reset member variables from scratch or initialize), use this method instead*/
     //HW2::grade<MyBugAlgorithm>("nonhuman.biologic@myspace.edu", argc, argv, constructor_parameter_1, constructor_parameter_2, etc...);

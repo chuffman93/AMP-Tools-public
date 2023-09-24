@@ -1,19 +1,25 @@
 #include "MyBugAlgorithm.h"
-
-bool operator==(Eigen::Vector2d a, Eigen::Vector2d b)
-{
-    if(((abs(a[0] - b[0]) < 1e-3) && (abs(a[1] - b[1]) < 1e-3)))
-    {
-        return true;
-    }   
-    return false;
-}
+// bool operator==(Eigen::Vector2d a, Eigen::Vector2d b)
+// {
+//     if(((abs(a[0] - b[0]) < 1e-3) && (abs(a[1] - b[1]) < 1e-3)))
+//     {
+//         return true;
+//     }   
+//     return false;
+// }
 
 double roundD(double a)
 {
     return round(a*100.0)/100.0;
 }
 
+Eigen::Vector2d roundPt(Eigen::Vector2d pt)
+{
+    Eigen::Vector2d ret;
+    ret[0] = roundD(pt[0]);
+    ret[1] = roundD(pt[1]);
+    return ret;
+}
 
 bool compDoubles(double a, double b, const char * comp)
 {
@@ -118,7 +124,14 @@ amp::Path2D MyBugAlgorithm::plan(const amp::Problem2D& problem) {
                 b = (qG[1] - (m*qG[0]));
                 break;
             }
+            if (qL == qL_Next)
+            {
+                printf("PATH NOT FOUND\n");
+                path.waypoints.push_back(qL);
+                return path;
+            }
             qL = qL_Next;
+            
             if(debug) printf("Approaching Obj on the way to the goal (%.6f,%.6f), currently at (%.6f,%.6f)\n",qG[0],qG[1],qL[0],qL[1]);
             path.waypoints.push_back(qL);
         }
@@ -126,6 +139,11 @@ amp::Path2D MyBugAlgorithm::plan(const amp::Problem2D& problem) {
         qL = qL_Next;
         if(qL == qG)
         {
+            if(debug)
+            {
+                printf("Goal found!!!!!!!!!!!!\n");
+                sleep(10);
+            }
             found = true;
         }
 
@@ -252,9 +270,10 @@ MyBugAlgorithm::qH MyBugAlgorithm::collisionCheck(vector<amp::Obstacle2D> obstac
         numVerts = objverts.size();
         for(int j = 0; j < numVerts-1; j++)
         {
-            if(intersectCheck(objverts[j],objverts[j+1],qL,qLNext) || objverts[j] == qLNext || goalOverreach(objverts[j],objverts[j+1],qLNext))
+            if(intersectCheck(roundPt(objverts[j]),roundPt(objverts[j+1]),qL,qLNext) || roundPt(objverts[j]) == qLNext || goalOverreach(roundPt(objverts[j]),roundPt(objverts[j+1]),qLNext))
             {
-                if(debug) printf("Found Collision!! target vert (%.6f,%.6f), trail vert (%.6f,%.6f), qL (%.6f,%.6f), qlNext (%.6f,%.6f)\n", objverts[j+1][0], objverts[j+1][1], objverts[j][0], objverts[j][1], qL[0], qL[1], qLNext[0], qLNext[1]);
+                if(debug) printf("Found Collision!! target vert (%.6f,%.6f), trail vert (%.6f,%.6f), qL (%.6f,%.6f), qlNext (%.6f,%.6f)\n", roundD(objverts[j+1][0]), roundD(objverts[j+1][1]), roundD(objverts[j][0]), roundD(objverts[j][1]), (qL[0]), (qL[1]), (qLNext[0]), (qLNext[1]));
+                if(debug) sleep(5);
                 ret.objNum = i;
                 ret.vertDir = j+1;
                 ret.hit = true;
@@ -262,9 +281,10 @@ MyBugAlgorithm::qH MyBugAlgorithm::collisionCheck(vector<amp::Obstacle2D> obstac
                 return ret;
             }
         }
-        if(intersectCheck(objverts.back(),objverts.front(),qL,qLNext) || objverts.back() == qLNext || goalOverreach(objverts.back(),objverts.front(),qLNext))
+        if(intersectCheck(roundPt(objverts.back()),roundPt(objverts.front()),qL,qLNext) || objverts.back() == qLNext || goalOverreach(roundPt(objverts.back()),roundPt(objverts.front()),qLNext))
         {
-            if(debug) printf("Front: Found Collision!! target vert (%.6f,%.6f), trail vert (%.6f,%.6f), qL (%.6f,%.6f), qlNext (%.6f,%.6f)\n", objverts.front()[0], objverts.front()[0], objverts.back()[0], objverts.back()[1], qL[0], qL[1], qLNext[0], qLNext[1]);
+            if(debug) printf("Front: Found Collision!! target vert (%.6f,%.6f), trail vert (%.6f,%.6f), qL (%.6f,%.6f), qlNext (%.6f,%.6f)\n", roundD(objverts.front()[0]), roundD(objverts.front()[0]), roundD(objverts.back()[0]), roundD(objverts.back()[1]), qL[0], qL[1], qLNext[0], qLNext[1]);
+            if(debug) sleep(5);
             ret.objNum = i;
             ret.vertDir = 0;
             ret.hit = true;
@@ -284,11 +304,15 @@ amp::Path2D MyBugAlgorithm::objTraverse(vector<amp::Obstacle2D> obstacles, qH tr
 {
     amp::Path2D ret;
     Eigen::Vector2d q = travStart.qh;
+    Eigen::Vector2d travLineSt;
     MyBugAlgorithm::qH qN;
     MyBugAlgorithm::qH closePt;
     MyBugAlgorithm::qH qTmp;
 
+    vector<Eigen::Vector2d> obverts;
+
     int toVert = travStart.vertDir;
+    int prevVert;
     int obj = travStart.objNum;
 
     qN.objNum = travStart.objNum;
@@ -305,7 +329,30 @@ amp::Path2D MyBugAlgorithm::objTraverse(vector<amp::Obstacle2D> obstacles, qH tr
 
     int pathLen = 1;
     int lenToShort;
+    int numVerts;
+    if(strcmp(MyBugAlgorithm::turn,"right") == 0)
+    {
+        obverts = obstacles[obj].verticesCCW();
+    }
+    else
+    {
+        obverts = obstacles[obj].verticesCW();
+    }
+    numVerts = obverts.size();
+    if(toVert == 0)
+    {
+        prevVert = numVerts-1;
+    }
+    else
+    {
+        prevVert = toVert-1;
+    }
+    travLineSt = calTravLine(obverts[prevVert], obverts[toVert], q);
+    m = travLineSt[0];
+    b = travLineSt[1];
+    if(debug) printf("New M is %.3f and new b %.3f\n",m,b);
     if(debug) printf("---------- Transversing Object ----------\n");
+
     while(!fullTraversed || !shortPoint)
     {
         
@@ -405,13 +452,13 @@ MyBugAlgorithm::qH MyBugAlgorithm::followObstacle(Eigen::Vector2d q, amp::Obstac
         nxtVert = verItr+1;
     }
 
-    Eigen::Vector2d ptA1 = objverts[prevVert];
-    Eigen::Vector2d ptB1 = objverts[verItr];    
-    Eigen::Vector2d ptC1 = objverts[nxtVert];   
+    Eigen::Vector2d ptA1 = roundPt(objverts[prevVert]);
+    Eigen::Vector2d ptB1 = roundPt(objverts[verItr]);    
+    Eigen::Vector2d ptC1 = roundPt(objverts[nxtVert]);   
 
     Eigen::Vector2d intPt;
 
-    if(debug) printf("Moving from point (%.6f, %.6f) to vert %d [%d] %d (%.6f, %.6f) on object %d\n", q[0], q[1], prevVert, verItr, nxtVert, ptB1[0], ptB1[1], objNumber);
+    if(debug) printf("Moving from point (%.6f, %.6f) to vert %d [%d] %d (%.3f, %.3f) from (%.3f, %.3f) next vert (%.3f, %.3f) on object %d\n", q[0], q[1], prevVert, verItr, nxtVert, ptB1[0], ptB1[1], ptA1[0], ptA1[1], ptC1[0], ptC1[1], objNumber);
 
     Eigen::Vector2d mxTrav = calTravLine(ptA1,ptB1,q);
     Eigen::Vector2d mxRef = calLine(ptA1,ptB1);
@@ -452,10 +499,9 @@ MyBugAlgorithm::qH MyBugAlgorithm::followObstacle(Eigen::Vector2d q, amp::Obstac
         else
         {
             mxLn2 = calLine(ptB1,ptC1);
-            intpt[0] = q[0];
+            intPt[0] = q[0];
             intPt[1] = mxLn2[0] * intPt[0] + mxLn2[1];
-            nextLine = (negXmove ? compDoubles(intPt[0], q[0],"gt") : compDoubles(intPt[0], q[0],"gt")) 
-                    && (negYmove ? compDoubles(intPt[1], q[1],"gt") : compDoubles(intPt[1], q[1],"gt"));
+            nextLine = (negXmove ? compDoubles(intPt[0], q[0],"gt") : compDoubles(intPt[0], q[0],"gt"));
 
         }
 
@@ -513,10 +559,9 @@ MyBugAlgorithm::qH MyBugAlgorithm::followObstacle(Eigen::Vector2d q, amp::Obstac
         else
         {
             mxLn2 = calLine(ptB1,ptC1);
-            intpt[0] = q[0];
-            intPt[1] = mxLn2[0] * intPt[0] + mxLn2[1];
-            nextLine = (negXmove ? compDoubles(intPt[0], q[0],"gt") : compDoubles(intPt[0], q[0],"lt")) 
-                    && (negYmove ? compDoubles(intPt[1], q[1],"gt") : compDoubles(intPt[1], q[1],"lt"));
+            intPt[1] = q[1];    
+            intPt[0] = (intPt[1]-mxLn2[1])/mxLn2[0];
+            nextLine = (negXmove ? compDoubles(intPt[0], q[0],"gt") : compDoubles(intPt[0], q[0],"lt"));
         }
 
         if(nextLine)
@@ -592,11 +637,9 @@ MyBugAlgorithm::qH MyBugAlgorithm::followObstacle(Eigen::Vector2d q, amp::Obstac
         }
         else
         {
-            mxLn2 = calLine(ptB1,ptC1);
-            intpt[0] = q[0];
-            intPt[1] = mxLn2[0] * intPt[0] + mxLn2[1];
-            nextLine = (negXmove ? compDoubles(intPt[0], q[0],"gt") : compDoubles(intPt[0], q[0],"gt")) 
-                    && (negYmove ? compDoubles(intPt[1], q[1],"gt") : compDoubles(intPt[1], q[1],"gt"));
+            mxLn2 = calLine(ptC1,ptB1);
+            intPt = interCeptPt(mxLn2, mxLnTrav);
+            nextLine = (negXmove ? compDoubles(intPt[0], q[0],"gt") : compDoubles(intPt[0], q[0],"gt"));
         }
 
         if(nextLine && nxtyLine)
@@ -630,15 +673,45 @@ MyBugAlgorithm::qH MyBugAlgorithm::followObstacle(Eigen::Vector2d q, amp::Obstac
         }
         else if(nextLine)
         {
-
+            if(debug) printf("NEXT LINE\n");
+            negXmove = compDoubles(ptB1[0], ptC1[0], "gt");
+            if(!negXmove)
+            {
+                nextPt.qh[0] += MyBugAlgorithm::step;
+                mxLnTrav = calTravLine(ptB1, ptC1, nextPt.qh);
+                m = mxLnTrav[0];
+                b = mxLnTrav[1];
+                nextPt.qh[1] = m*nextPt.qh[0] + b;
+            }
+            else
+            {
+                nextPt.qh[0] -= MyBugAlgorithm::step;
+                mxLnTrav = calTravLine(ptB1, ptC1, nextPt.qh);
+                m = mxLnTrav[0];
+                b = mxLnTrav[1];
+                nextPt.qh[1] = m*nextPt.qh[0] + b;
+            }
+            nextPt.vertDir = nxtVert;
         }
         else
         {
-            
+            if(debug) printf("SAME LINE on Line\n");
+            if(debug) printf("New M is %.3f and new b %.3f intercept (%.3f,%.3f)\n",m,b,intPt[0],intPt[1]);
+            if(!negXmove)
+            {
+                nextPt.qh[0] += MyBugAlgorithm::step;
+                nextPt.qh[1] = m*nextPt.qh[0] + b;
+            }
+            else
+            {
+                nextPt.qh[0] -= MyBugAlgorithm::step;
+                nextPt.qh[1] = m*nextPt.qh[0] + b;
+            }
+
         }
     }
     if(debug) printf("Next Point = (%.6f, %.6f)\n", nextPt.qh[0], nextPt.qh[1]);
-    // if(debug) usleep(1e4);
+    // if(debug) usleep(1e6);
     return nextPt;
 }
 
@@ -646,8 +719,10 @@ Eigen::Vector2d MyBugAlgorithm::interCeptPt(Eigen::Vector2d mx1, Eigen::Vector2d
 {
     Eigen::Vector2d ret;
 
-    ret[0] = (mx2[1] - mx1[1])  / (mx1[0] - mx2[0]);
-    ret[1] = (mx1[1] - mx2[1])  / (mx1[0] - mx2[0]);
+    if(debug) printf("mx1: %.3fx + %.3f\n", mx1[0] , mx1[1]);
+    if(debug) printf("mx2: %.3fx + %.3f\n", m , b);
+    ret[0] = (b - mx1[1]) / (mx1[0] - m);
+    ret[1] = mx1[1] + ret[0]*mx1[0];
 
     return ret;
 }
@@ -670,11 +745,11 @@ Eigen::Vector2d MyBugAlgorithm::calTravLine(Eigen::Vector2d ptA1, Eigen::Vector2
 
     if(posNeg < 0)
     {
-        mxRet[1] = (b1 < 0) ? b1 : b2;
+        mxRet[1] = (compDoubles(b1,mx[1],"lt")) ? b1 : b2;
     }
     else
     {
-        mxRet[1] = (b1 > 0) ? b1 : b2;
+        mxRet[1] = (compDoubles(b1,mx[1],"gt")) ? b1 : b2;
     }
 
 
@@ -686,7 +761,7 @@ Eigen::Vector2d MyBugAlgorithm::calLine(Eigen::Vector2d ptA1, Eigen::Vector2d pt
 {
     Eigen::Vector2d mx;
     mx[0] = ((ptB1[1] - ptA1[1]) / (ptB1[0] - ptA1[0]));
-    mx[1] = (ptB1[1] - (m*ptB1[0]));
+    mx[1] = (ptA1[1] - (mx[0]*ptA1[0]));
     return mx;
 
 }
