@@ -5,7 +5,7 @@
 #include "hw/HW2.h"
 
 // Include any custom headers you created in your workspace
-#include "MyBug1Algorithm.h"
+#include "MyBugAlgorithm.h"
 #include "MyBug2Algorithm.h"
 
 using namespace amp;
@@ -36,35 +36,35 @@ int main(int argc, char** argv) {
     */
 
     // Declare your algorithm object 
-    MyBug1Algorithm algo1;
+    MyBugAlgorithm algo1;
     MyBug2Algorithm algo2;
     
     // Bug 1
     {
         
-        // Call your algorithm on the problem
-        amp::Path2D path_1_w1 = algo1.plan(problem1);
+        // // Call your algorithm on the problem
+        // amp::Path2D path_1_w1 = algo1.plan(problem1);
 
-        // Check your path to make sure that it does not collide with the environment 
-        bool success = HW2::check(path_1_w1, problem1);
+        // // Check your path to make sure that it does not collide with the environment 
+        // bool success = HW2::check(path_1_w1, problem1);
 
-        LOG("Found valid solution to workspace 1: " << (success ? "Yes!" : "No :("));
-        LOG("path length: " << path_1_w1.length()); // 104.634
+        // LOG("Found valid solution to workspace 1: " << (success ? "Yes!" : "No :("));
+        // LOG("path length: " << path_1_w1.length()); // 104.634
 
-        // Visualize the path and environment
-        Visualizer::makeFigure(problem1, path_1_w1);
+        // // Visualize the path and environment
+        // Visualizer::makeFigure(problem1, path_1_w1);
 
-        // Call your algorithm on the problem
-        amp::Path2D path_1_w2 = algo1.plan(problem2);
+        // // Call your algorithm on the problem
+        // amp::Path2D path_1_w2 = algo1.plan(problem2);
 
-        // Check your path to make sure that it does not collide with the environment 
-        success = HW2::check(path_1_w2, problem2);
+        // // Check your path to make sure that it does not collide with the environment 
+        // success = HW2::check(path_1_w2, problem2);
 
-        LOG("Found valid solution to workspace 2: " << (success ? "Yes!" : "No :("));
-        LOG("path length: " << path_1_w2.length()); // 315.04
+        // LOG("Found valid solution to workspace 2: " << (success ? "Yes!" : "No :("));
+        // LOG("path length: " << path_1_w2.length()); // 315.04
 
-        // Visualize the path and environment
-         Visualizer::makeFigure(problem2, path_1_w2);
+        // // Visualize the path and environment
+        //  Visualizer::makeFigure(problem2, path_1_w2);
     }
 
     // Bug 2
@@ -112,7 +112,7 @@ int main(int argc, char** argv) {
 
     Visualizer::showFigures();
 
-    HW2::grade(algo1, "cohu8717@colorado.edu", argc, argv);
+    // HW2::grade(algo1, "cohu8717@colorado.edu", argc, argv);
     
     /* If you want to reconstruct your bug algorithm object every trial (to reset member variables from scratch or initialize), use this method instead*/
     //HW2::grade<MyBugAlgorithm>("nonhuman.biologic@myspace.edu", argc, argv, constructor_parameter_1, constructor_parameter_2, etc...);

@@ -377,7 +377,8 @@ amp::Path2D MyBugAlgorithm::objTraverse(vector<amp::Obstacle2D> obstacles, qH tr
             }
             if(!qTmp.hit)
             {
-                 q = qN.qh;
+                q = qN.qh;
+                if(debug) printf("q = (%.6f,%.6f), start = (%.6f,%.6f)\n", q[0], q[1], travStart.qh[0], travStart.qh[1]);
                 if((abs(q[0] - travStart.qh[0]) < 1e-2) && (abs(q[1] - travStart.qh[1]) < 1e-2) && !compDoubles(shortDist, 10000, "eq"))
                 {
                     if(debug) printf("Object Fully Traversed q = (%.6f,%.6f), start = (%.6f,%.6f)\n", q[0], q[1], travStart.qh[0], travStart.qh[1]);
@@ -501,7 +502,7 @@ MyBugAlgorithm::qH MyBugAlgorithm::followObstacle(Eigen::Vector2d q, amp::Obstac
             mxLn2 = calLine(ptB1,ptC1);
             intPt[0] = q[0];
             intPt[1] = mxLn2[0] * intPt[0] + mxLn2[1];
-            nextLine = (negXmove ? compDoubles(intPt[0], q[0],"gt") : compDoubles(intPt[0], q[0],"gt"));
+            nextLine = (negXmove ? compDoubles(intPt[0], q[0],"gt") : compDoubles(intPt[0], q[0],"lt"));
 
         }
 
@@ -639,7 +640,8 @@ MyBugAlgorithm::qH MyBugAlgorithm::followObstacle(Eigen::Vector2d q, amp::Obstac
         {
             mxLn2 = calLine(ptC1,ptB1);
             intPt = interCeptPt(mxLn2, mxLnTrav);
-            nextLine = (negXmove ? compDoubles(intPt[0], q[0],"gt") : compDoubles(intPt[0], q[0],"gt"));
+            nextLine = (negXmove ? compDoubles(intPt[0], q[0],"gt") : compDoubles(intPt[0], q[0],"lt")) ||
+                       (negYmove ? compDoubles(intPt[1], q[1],"gt") : compDoubles(intPt[1], q[1],"lt")) ;
         }
 
         if(nextLine && nxtyLine)
@@ -697,20 +699,54 @@ MyBugAlgorithm::qH MyBugAlgorithm::followObstacle(Eigen::Vector2d q, amp::Obstac
         {
             if(debug) printf("SAME LINE on Line\n");
             if(debug) printf("New M is %.3f and new b %.3f intercept (%.3f,%.3f)\n",m,b,intPt[0],intPt[1]);
-            if(!negXmove)
+            double rad = atan(m);
+            double xStep = MyBugAlgorithm::step*cos(rad);
+            double yStep = MyBugAlgorithm::step*sin(rad);
+
+            if(debug) printf("Rad %.3f => xStep = %.3f, yStep = %.3f\n",rad,xStep,yStep);
+            if(rad > 0)
             {
-                nextPt.qh[0] += MyBugAlgorithm::step;
-                nextPt.qh[1] = m*nextPt.qh[0] + b;
+                if(!negXmove)
+                {
+                    nextPt.qh[0] += xStep;
+                }
+                else
+                {
+                    nextPt.qh[0] -= xStep;
+                }
+                if(!negYmove)
+                {
+                    nextPt.qh[1] += yStep;
+                }
+                else
+                {
+                    nextPt.qh[1] -= yStep;
+                }
             }
             else
             {
-                nextPt.qh[0] -= MyBugAlgorithm::step;
-                nextPt.qh[1] = m*nextPt.qh[0] + b;
+                if(!negXmove)
+                {
+                    nextPt.qh[0] += xStep;
+                }
+                else
+                {
+                    nextPt.qh[0] -= xStep;
+                }
+                if(!negYmove)
+                {
+                    nextPt.qh[1] += (-1)*yStep;
+                }
+                else
+                {
+                    nextPt.qh[1] -= (-1)*yStep;
+                }
             }
-
         }
     }
-    if(debug) printf("Next Point = (%.6f, %.6f)\n", nextPt.qh[0], nextPt.qh[1]);
+    // if(debug) printf("Next Point = (%.6f, %.6f)\n", nextPt.qh[0], nextPt.qh[1]);
+    qH retPt = nextPt;
+    retPt.qh = roundPt(nextPt.qh);
     // if(debug) usleep(1e6);
     return nextPt;
 }
