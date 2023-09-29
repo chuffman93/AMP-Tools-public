@@ -1,12 +1,12 @@
 #include "MyBugAlgorithm.h"
-// bool operator==(Eigen::Vector2d a, Eigen::Vector2d b)
-// {
-//     if(((abs(a[0] - b[0]) < 1e-3) && (abs(a[1] - b[1]) < 1e-3)))
-//     {
-//         return true;
-//     }   
-//     return false;
-// }
+bool operator==(Eigen::Vector2d a, Eigen::Vector2d b)
+{
+    if(((abs(a[0] - b[0]) < 1e-3) && (abs(a[1] - b[1]) < 1e-3)))
+    {
+        return true;
+    }   
+    return false;
+}
 
 double roundD(double a)
 {
@@ -23,15 +23,16 @@ Eigen::Vector2d roundPt(Eigen::Vector2d pt)
 
 bool compDoubles(double a, double b, const char * comp)
 {
+
     double a2 = roundD(a);
     double b2 = roundD(b);
     if(strcmp(comp,"lt") == 0)
     {
-        return a2 < b2;
+        return a < b;
     }
     else if(strcmp(comp,"gt") == 0)
     {
-        return a2 > b2;
+        return a > b;
     }
     else if(strcmp(comp,"le") == 0)
     {
@@ -87,11 +88,11 @@ amp::Path2D MyBugAlgorithm::plan(const amp::Problem2D& problem) {
 
         if(goalDet)
         {
-            qL_Next = nextStep(qL, qG, step);
+            qL_Next = roundPt(nextStep(qL, qG, step));
         }
         else
         {
-            qL_Next = nextStep(qL, qG, step);
+            qL_Next = roundPt(nextStep(qL, qG, step));
         }
         if(debug) printf("qL = (%.6f,%.6f) and qL_Next = (%.6f,%.6f)\n",qL[0],qL[1],qL_Next[0],qL_Next[1]);        
         qh = collisionCheck(obstacles, qL, qL_Next, -1);
@@ -142,7 +143,7 @@ amp::Path2D MyBugAlgorithm::plan(const amp::Problem2D& problem) {
             if(debug)
             {
                 printf("Goal found!!!!!!!!!!!!\n");
-                sleep(10);
+                // sleep(10);
             }
             found = true;
         }
@@ -169,15 +170,59 @@ Eigen::Vector2d MyBugAlgorithm::nextStep(Eigen::Vector2d ptA, Eigen::Vector2d pt
         {    
             // if(debug) printf("qL = (%.6f, %.6f) ptB = (%.6f, %.6f)\n", qL[0], qL[1], ptB[0], ptB[1]);
             // if(debug) printf("%.6fx+%.6f \n",MyBugAlgorithm::m,MyBugAlgorithm::b);
+            double rad = atan(m);
+            double xStep = MyBugAlgorithm::step*cos(rad);
+            double yStep = MyBugAlgorithm::step*sin(rad);
+
             if(negXmove)
             {
-                qL[0] -= stepSize;
+                qL[0] -= MyBugAlgorithm::step;
             }
             else
             {
-                qL[0] += stepSize;
+                qL[0] += MyBugAlgorithm::step;
             }
-            qL[1] = roundD((m*qL[0] + b));
+            qL[1] = roundD(m*qL[0] + b);
+
+            // if(debug) printf("Rad %.3f => xStep = %.3f, yStep = %.3f\n",rad,xStep,yStep);
+            // if(rad > 0)
+            // {
+            //     if(!negXmove)
+            //     {
+            //         qL[0] += xStep;
+            //     }
+            //     else
+            //     {
+            //         qL[0] -= xStep;
+            //     }
+            //     if(!negYmove)
+            //     {
+            //         qL[1] += yStep;
+            //     }
+            //     else
+            //     {
+            //         qL[1] -= yStep;
+            //     }
+            // }
+            // else
+            // {
+            //     if(!negXmove)
+            //     {
+            //         qL[0] += xStep;
+            //     }
+            //     else
+            //     {
+            //         qL[0] -= xStep;
+            //     }
+            //     if(!negYmove)
+            //     {
+            //         qL[1] += (-1)*yStep;
+            //     }
+            //     else
+            //     {
+            //         qL[1] -= (-1)*yStep;
+            //     }
+            // }
         }
         else if(yLine)
         {
@@ -273,7 +318,7 @@ MyBugAlgorithm::qH MyBugAlgorithm::collisionCheck(vector<amp::Obstacle2D> obstac
             if(intersectCheck(roundPt(objverts[j]),roundPt(objverts[j+1]),qL,qLNext) || roundPt(objverts[j]) == qLNext || goalOverreach(roundPt(objverts[j]),roundPt(objverts[j+1]),qLNext))
             {
                 if(debug) printf("Found Collision!! target vert (%.6f,%.6f), trail vert (%.6f,%.6f), qL (%.6f,%.6f), qlNext (%.6f,%.6f)\n", roundD(objverts[j+1][0]), roundD(objverts[j+1][1]), roundD(objverts[j][0]), roundD(objverts[j][1]), (qL[0]), (qL[1]), (qLNext[0]), (qLNext[1]));
-                if(debug) sleep(5);
+                // if(debug) sleep(5);
                 ret.objNum = i;
                 ret.vertDir = j+1;
                 ret.hit = true;
@@ -284,7 +329,7 @@ MyBugAlgorithm::qH MyBugAlgorithm::collisionCheck(vector<amp::Obstacle2D> obstac
         if(intersectCheck(roundPt(objverts.back()),roundPt(objverts.front()),qL,qLNext) || objverts.back() == qLNext || goalOverreach(roundPt(objverts.back()),roundPt(objverts.front()),qLNext))
         {
             if(debug) printf("Front: Found Collision!! target vert (%.6f,%.6f), trail vert (%.6f,%.6f), qL (%.6f,%.6f), qlNext (%.6f,%.6f)\n", roundD(objverts.front()[0]), roundD(objverts.front()[0]), roundD(objverts.back()[0]), roundD(objverts.back()[1]), qL[0], qL[1], qLNext[0], qLNext[1]);
-            if(debug) sleep(5);
+            // if(debug) sleep(5);
             ret.objNum = i;
             ret.vertDir = 0;
             ret.hit = true;
@@ -364,7 +409,7 @@ amp::Path2D MyBugAlgorithm::objTraverse(vector<amp::Obstacle2D> obstacles, qH tr
             {
                 
                 if(debug) printf("collision!! moving from (%.6f,%.6f) to potenionally (%.6f,%.6f)\n", q[0], q[1], qN.qh[0], qN.qh[1]);
-                if(debug) sleep(5);
+                // if(debug) sleep(5);
                 toVert = qTmp.vertDir;
                 obj = qTmp.objNum;
                 qN.vertDir = qTmp.vertDir;
@@ -379,10 +424,10 @@ amp::Path2D MyBugAlgorithm::objTraverse(vector<amp::Obstacle2D> obstacles, qH tr
             {
                 q = qN.qh;
                 if(debug) printf("q = (%.6f,%.6f), start = (%.6f,%.6f)\n", q[0], q[1], travStart.qh[0], travStart.qh[1]);
-                if((abs(q[0] - travStart.qh[0]) < 1e-2) && (abs(q[1] - travStart.qh[1]) < 1e-2) && !compDoubles(shortDist, 10000, "eq"))
+                if((ret.waypoints.size() > 20) && (abs(q[0] - travStart.qh[0]) < 1e-1) && (abs(q[1] - travStart.qh[1]) < 1e-1) && !compDoubles(shortDist, 10000, "eq"))
                 {
                     if(debug) printf("Object Fully Traversed q = (%.6f,%.6f), start = (%.6f,%.6f)\n", q[0], q[1], travStart.qh[0], travStart.qh[1]);
-                    if(debug) sleep(5);
+                    // if(debug) sleep(5);
                     fullTraversed = true;
                 }
                 
@@ -745,8 +790,6 @@ MyBugAlgorithm::qH MyBugAlgorithm::followObstacle(Eigen::Vector2d q, amp::Obstac
         }
     }
     // if(debug) printf("Next Point = (%.6f, %.6f)\n", nextPt.qh[0], nextPt.qh[1]);
-    qH retPt = nextPt;
-    retPt.qh = roundPt(nextPt.qh);
     // if(debug) usleep(1e6);
     return nextPt;
 }
