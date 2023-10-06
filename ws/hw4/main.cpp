@@ -1,183 +1,124 @@
 // This includes all of the necessary header files in the toolbox
 #include "AMPCore.h"
-#include <cmath>
+
 // Include the correct homework header
 #include "hw/HW4.h"
 
 // Include the header of the shared class
 #include "HelpfulClass.h"
+#include "MyLinkManipulator.h"
+#include "MyConfigurationSpace2D.h"
 
 using namespace amp;
 using namespace std;
 
-struct linkerState
+double calAngle(Eigen::Vector2d pt1, Eigen::Vector2d pt2)
 {
-    vector<double> lengths;
-    vector<double> angles;
-    int numLink;
-    Eigen::Vector2d endPoint;
-    vector<Eigen::Matrix4d> jointPts;
-};
-
-Eigen::Matrix4d rotateZ(double ang)
-{
-    Eigen::Matrix4d ret;
-    ret << cos(ang), -sin(ang), 0, 0,
-           sin(ang), cos(ang), 0, 0,
-           0, 0, 1, 0,
-           0, 0, 0, 1;
-    return ret;
-}
-
-Eigen::Matrix4d translate(double dx, double dy, double dz)
-{
-    Eigen::Matrix4d ret;
-    ret << 1, 0, 0, dx,
-           0, 1, 0, dy,
-           0, 0, 1, dz,
-           0, 0, 0, 1;
-    return ret;
-}
-
-linkerState FK(vector<double> lengths, vector<double> angles)
-{
-    linkerState newState;
-    newState.lengths = lengths;
-    newState.angles = angles;
-    newState.numLink = lengths.size();
-    vector<Eigen::Matrix4d> P;
-    P.push_back(Eigen::Matrix4d::Identity()); 
-    Eigen::Matrix4d R;
-    Eigen::Matrix4d T;
-    for(int i = 0; i < newState.numLink; i++)
+    if(abs(pt2[1] - pt1[1]) < 1e-3)
     {
-        R = rotateZ(angles[i]);
-        T = translate(lengths[i], 0, 0);
-        P.push_back(P.back()*R*T);
-    }
-    newState.jointPts = P;
-    return newState;
-}
-
-linkerState IK(vector<double> lengths, Eigen::Vector2d target)
-{
-    int max_itr = 1000;
-    double err = 1e-12;
-
-    bool solved = false;
-
-    Eigen::Vector2d endToTarget;
-    double errEndToTarget;
-    Eigen::Vector2d currToEnd;
-    double errCurrToEnd;
-    Eigen::Vector2d currtoTarget;
-    double currToTargetMag;
-    double endTargetMag;
-    double cosRotAng;
-    double sinRotAng;
-    double rotAng;
-
-    linkerState curr;
-    linkerState ret;
-
-    vector<double> Ang{0.0,0.0,0.0};
-
-
-    while(!solved && max_itr > 0)
-    {
-        for(int i = lengths.size()-1; i >= 0; i--)
+        if(pt2[0] > pt1[0])
         {
-            curr = FK(lengths, Ang);
-            endToTarget = target - Eigen::Vector2d{curr.jointPts.back().col(3)(0),curr.jointPts.back().col(3)(1)};
-            errEndToTarget = sqrt(pow(endToTarget[0],2) + pow(endToTarget[1],2));
-            if(errEndToTarget < err)
-            {
-                solved = true;
-            }
-            else
-            {
-                currToEnd = Eigen::Vector2d{curr.jointPts.back().col(3)(0),curr.jointPts.back().col(3)(1)} - 
-                            Eigen::Vector2d{curr.jointPts[i].col(3)(0),curr.jointPts[i].col(3)(1)};
-                errCurrToEnd = sqrt(pow(currToEnd[0],2) + pow(currToEnd[1],2));
-                currtoTarget = target - Eigen::Vector2d{curr.jointPts[i].col(3)(0),curr.jointPts[i].col(3)(1)};
-                currToTargetMag = sqrt(pow(currtoTarget[0],2) + pow(currtoTarget[1],2));
-                
-                endTargetMag = errCurrToEnd*currToTargetMag;
-
-                if(endTargetMag <= 0.0001)
-                {
-                    cosRotAng = 1.0;
-                    sinRotAng = 0.0;
-                }
-                else
-                {
-                    cosRotAng = (currToEnd[0]*currtoTarget[0] + currToEnd[1]*currtoTarget[1])/endTargetMag;
-                    sinRotAng = (currToEnd[0]*currtoTarget[1] - currToEnd[1]*currtoTarget[0])/endTargetMag;
-                }
-
-                rotAng = acos(max(-1.0, min(1.0,cosRotAng)));
-
-                if(sinRotAng < 0.0)
-                {
-                    rotAng = -rotAng;
-                }
-
-                Ang[i] = Ang[i] + rotAng;
-
-                if(Ang[i] >= 2.0*M_PI)
-                {
-                    Ang[i] = Ang[i] -(2.0*M_PI);
-                }
-                if(Ang[i] < 0.0)
-                {
-                    Ang[i] = (2.0*M_PI) + Ang[i];
-                }
-            }
+            return 0;
         }
-        ret = curr;
-        ret.angles = Ang;
-        curr.angles = Ang;
-        printf("New angles are %.2f, %.2f, and %.2f\n", Ang[0]*180/M_PI, Ang[1]*180/M_PI, Ang[2]*180/M_PI);
-        max_itr -= 1; 
-        if(solved)
+        else
         {
-            break;
+            return M_PI;
         }
     }
-    return ret;
+    else if(abs(pt2[0] - pt1[0]) < 1e-3)
+    {
+        if(pt2[1] > pt1[1])
+        {
+            return (2/M_PI);
+        }
+        else
+        {
+            return (3*M_PI/2);
+        }
+    }
+    return atan2(pt2[1] - pt1[1], pt2[0] - pt1[0]);
 }
 
+vector<Eigen::Vector2d> minSum(Polygon Objs, Polygon Robot)
+{
+    vector<Eigen::Vector2d> cSpaceObj;
+    vector<Eigen::Vector2d> obsVrt = Objs.verticesCCW();
+    vector<Eigen::Vector2d> robVrt = Robot.verticesCCW();
+    int n = robVrt.size();
+    int m = obsVrt.size();
+    int i = 0;
+    int j = 0;
 
+    for(int k = 0; k < m; k++)
+    {
+        printf("vert %d (%.2f, %.2f)", k, robVrt[k][0], robVrt[k][1]);
+        robVrt[k] = -robVrt[k];
+        printf("-vert (%.2f, %.2f)", robVrt[k][0], robVrt[k][1]);
+    }
+ 
+    while(i < n || j < m)
+    {
+        printf("n = %d, i = %d, j = %d, m = %d\n",n ,i ,j ,m);
+        cSpaceObj.push_back(obsVrt[j]+robVrt[i]);
+        if(calAngle(robVrt[i],robVrt[i+1]) < calAngle(obsVrt[j],obsVrt[j+1]))
+        {
+            i += 1;
+        }
+        else if(calAngle(robVrt[i],robVrt[i+1]) > calAngle(obsVrt[j],obsVrt[j+1]))
+        {
+            j += 1;
+        }
+        else
+        {
+            i += 1;
+            j += 1;
+        }
+    }
+    return cSpaceObj;
+}
 
 int main(int argc, char** argv) {
     /* Include this line to have different randomized environments every time you run your code (NOTE: this has no affect on grade()) */
     amp::RNG::seed(amp::RNG::randiUnbounded());
-    HW4 hf;
     // Exercise 1
     {
-        int y = 1;
+        amp::Obstacle2D obs = HW4::getEx1TriangleObstacle();
+        vector<Eigen::Vector2d> cObj = minSum(obs, obs);
+        Polygon cSpObj(cObj);
+        vector<string> cSpName{"C-Space Object"};
+        vector<Polygon> polygons{cSpObj};
+
+        Visualizer::makeFigure(polygons, cSpName, true);
+
     }
 
     // Exercise 2
     {
-        vector<double> lengths{0.5, 1, 0.5};
-        vector<double> angl{M_PI/6, M_PI/3, 7*M_PI/4};
-        linkerState link = FK(lengths, angl);
-        Eigen::Vector2d t2{0.2,0.1};
-        //link.jointPts.back().col(3)
-        Eigen::Vector2d test = t2-Eigen::Vector2d{0.2,0.1};
-        cout<< link.jointPts.back().col(3)(0) << endl;
+        vector<double> linkLens{0.5, 1.0, 0.5};
+        Eigen::Vector2d nBase{2.0,2.0};
+        MyLinkManipulator a(linkLens);
+        ManipulatorState ast = vector<double>{M_PI/6, M_PI/3, 7*M_PI/4};
+        Visualizer::makeFigure(a, ast);
+        int jtIdx = 3;
+        Eigen::Vector2d endEff = a.getJointLocation(ast, jtIdx);
+        Eigen::Vector2d aBase = a.getBaseLocation();
+        printf("(%.2f, %.2f) at joint number: %d, base at (%.2f, %.2f)\n", endEff[0], endEff[1], jtIdx, aBase[0], aBase[1]);
 
-        linkerState Final = IK(vector<double>{8,8,9}, Eigen::Vector2d{0.0, 4.0});
-        // [86.39082546081538, 85.62652297609263, 153.50224715871929]
-        printf("Final angles are %.2f, %.2f, and %.2f\n", Final.angles[0]*180/M_PI, Final.angles[1]*180/M_PI, Final.angles[2]*180/M_PI);
+        printf("Exercise 2a %s\n", HW4::checkFK(endEff, jtIdx, a, ast, true) ? "Passed!" : "Failed :(");
+
+        vector<double> linkLensb{1, 0.5, 1};
+        Eigen::Vector2d endTarget{2.0, 0.0};
+        MyLinkManipulator b(linkLensb);
+        ManipulatorState tarSt = b.getConfigurationFromIK(endTarget);
+        Visualizer::makeFigure(b, tarSt);
+        
     }
 
     // Exercise 3
     {
 
     }
-
+    Visualizer::showFigures();
     // Grade method
     // amp::HW4::grade<MyLinkManipulator>(constructor, "nonhuman.biologic@myspace.edu", argc, argv);
     return 0;

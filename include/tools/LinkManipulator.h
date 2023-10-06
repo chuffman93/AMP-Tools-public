@@ -2,7 +2,6 @@
 
 #include <vector>
 #include <Eigen/Core>
-
 #include "tools/Serializer.h"
 
 namespace amp {
