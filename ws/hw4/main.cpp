@@ -12,6 +12,37 @@
 using namespace amp;
 using namespace std;
 
+vector<Eigen::Vector2d> reorderVerts(vector<Eigen::Vector2d> objSt)
+{
+    vector<Eigen::Vector2d> obj = objSt;
+
+    for(int i = 0; i < obj.size(); i++)
+    {
+        obj[i] = -1*obj[i];
+    }
+    int tmp = 0;
+    Eigen::Vector2d tmpPt;
+    int i,j;
+    double key1;
+    double key2;
+    for(i = 1; i < obj.size(); i++)
+    {
+        key1 = obj[i][1];
+        key2 = obj[i][0];
+        j = i-1;
+
+        while(j >= 0 && (obj[j][1] > key1))
+        {
+            tmpPt = obj[j+1];
+            obj[j+1] = obj[j];
+            obj[j] = tmpPt;
+            j = j-1;
+        }
+    }
+    printf("Obj Size: %ld\n", obj.size());
+    return obj;
+}
+
 double calAngle(Eigen::Vector2d pt1, Eigen::Vector2d pt2)
 {
     if(abs(pt2[1] - pt1[1]) < 1e-3)
@@ -43,36 +74,37 @@ vector<Eigen::Vector2d> minSum(Polygon Objs, Polygon Robot)
 {
     vector<Eigen::Vector2d> cSpaceObj;
     vector<Eigen::Vector2d> obsVrt = Objs.verticesCCW();
-    vector<Eigen::Vector2d> robVrt = Robot.verticesCCW();
-    int n = robVrt.size();
+    vector<Eigen::Vector2d> robVrtSt = Robot.verticesCCW();
+    int n = robVrtSt.size();
     int m = obsVrt.size();
     int i = 0;
     int j = 0;
 
-    for(int k = 0; k < m; k++)
-    {
-        printf("vert %d (%.2f, %.2f)", k, robVrt[k][0], robVrt[k][1]);
-        robVrt[k] = -robVrt[k];
-        printf("-vert (%.2f, %.2f)", robVrt[k][0], robVrt[k][1]);
-    }
+    vector<Eigen::Vector2d> robVrt  = reorderVerts(robVrtSt);
+
  
-    while(i < n || j < m)
+    while(i < n+1 || j < m+1)
     {
         printf("n = %d, i = %d, j = %d, m = %d\n",n ,i ,j ,m);
+        printf(" Obs Vert (%.2f, %.2f)->(%.2f, %.2f) Rob Vert (%.2f, %.2f)->(%.2f, %.2f)\n", obsVrt[j][0], obsVrt[j][1], obsVrt[j+1][0], obsVrt[j+1][1], robVrt[i][0], robVrt[i][1],  robVrt[i+1][0], robVrt[i+1][1]);
         cSpaceObj.push_back(obsVrt[j]+robVrt[i]);
-        if(calAngle(robVrt[i],robVrt[i+1]) < calAngle(obsVrt[j],obsVrt[j+1]))
-        {
-            i += 1;
-        }
-        else if(calAngle(robVrt[i],robVrt[i+1]) > calAngle(obsVrt[j],obsVrt[j+1]))
-        {
-            j += 1;
-        }
-        else
+        double robAng = calAngle(robVrt[i],robVrt[i+1]);
+        double obsAng = calAngle(obsVrt[j],obsVrt[j+1]);
+        printf("robAng = %.2f, obsAng = %.2f\n", robAng, obsAng);
+        if(abs(robAng - obsAng) < 1e-3)
         {
             i += 1;
             j += 1;
         }
+        else if(robAng < obsAng)
+        {
+            i += 1;
+        }
+        else if(robAng > obsAng)
+        {
+            j += 1;
+        }
+       
     }
     return cSpaceObj;
 }
@@ -120,6 +152,7 @@ int main(int argc, char** argv) {
     }
     Visualizer::showFigures();
     // Grade method
-    // amp::HW4::grade<MyLinkManipulator>(constructor, "nonhuman.biologic@myspace.edu", argc, argv);
+    GridCSpace2DConstructor GCon;
+    amp::HW4::grade<MyLinkManipulator>(GCon, "cohu8717@colorado.edu", argc, argv);
     return 0;
 }
