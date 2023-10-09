@@ -25,3 +25,4 @@ class MyConfigurationSpace2D : public ConfigurationSpace2D
 };
 
 
+

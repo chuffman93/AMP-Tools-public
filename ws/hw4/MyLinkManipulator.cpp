@@ -62,7 +62,12 @@ MyLinkManipulator::linkerState MyLinkManipulator::IK(vector<double> lengths, Eig
     MyLinkManipulator::linkerState curr;
     MyLinkManipulator::linkerState ret;
 
-    vector<double> Ang{0.1,0.1,0.1};
+    vector<double> Ang;
+
+    for(int i = 0; i < lengths.size(); i++)
+    {
+        Ang.push_back(0.1);
+    }
 
     Eigen::Vector2d base = this->getBaseLocation();
 
@@ -141,7 +146,7 @@ Eigen::Vector2d MyLinkManipulator::getJointLocation(const ManipulatorState& stat
     MyLinkManipulator::linkerState links = this->FK(lens, state);
     Eigen::Vector2d base = this->getBaseLocation();
     ret = base + Eigen::Vector2d{links.jointPts[joint_index].col(3)(0),links.jointPts[joint_index].col(3)(1)};
-    printf("Location of end point on final link: (%.3f, %.3f)\n",links.jointPts.back().col(3)(0),links.jointPts.back().col(3)(1));
+    // printf("Location of end point on final link: (%.3f, %.3f)\n",links.jointPts.back().col(3)(0),links.jointPts.back().col(3)(1));
     return ret;
 }
 
@@ -150,7 +155,14 @@ ManipulatorState MyLinkManipulator::getConfigurationFromIK(const Eigen::Vector2d
     ManipulatorState ret;
     vector<double> lens = this->getLinkLengths();
     MyLinkManipulator::linkerState links = this->IK(lens, end_effector_location);
-    printf("Angles are %.2f, %.2f, and %.2f\n", links.angles[0]*180/M_PI, links.angles[1]*180/M_PI, links.angles[2]*180/M_PI);
+    // string output = "Configuration Angles are: ";
+    // char * tmp;
+    // for(int i = 0; i < lens.size(); i++)
+    // {
+    //     sprintf(tmp, " %.2f Degs ", links.angles[i]*180/M_PI);
+    //     output += tmp;
+    // }
+    // printf("%s\n", output.c_str());
     ret = (ManipulatorState)links.angles;
     return ret;
 }
