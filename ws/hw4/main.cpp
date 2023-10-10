@@ -194,6 +194,10 @@ int main(int argc, char** argv) {
         Eigen::Vector2d endTarget{2.0, 0.0};
         MyLinkManipulator b(linkLensb);
         ManipulatorState tarSt = b.getConfigurationFromIK(endTarget);
+        for(int i = 0; i < tarSt.size(); i++)
+        {
+            printf("Angle %d = %.2f rads \n", i, tarSt[i]);
+        }
         Visualizer::makeFigure(b, tarSt);
     }
 

@@ -11,8 +11,8 @@ unique_ptr<GridCSpace2D> MyGridCSpace2DConstructor::construct(const amp::LinkMan
     double x1_min = x0_min;
     double x0Diff = (x0_max - x0_min)/m;
     double x1Diff = (x1_max - x1_min)/n;
-    MyGridCSpace2D cSpace = MyGridCSpace2D(m, n, x0_min, x0_max, x1_min, x1_max);
-    unique_ptr<MyGridCSpace2D> cSPtr;
+    
+    
     cSPtr.reset(&cSpace);
 
     double x0 = x0_min;
@@ -29,5 +29,5 @@ unique_ptr<GridCSpace2D> MyGridCSpace2DConstructor::construct(const amp::LinkMan
             cSPtr->operator()(i,j) = cSPtr->inCollision(x0+(x0Diff*i), x1+(x1Diff*j));
         }
     }
-    return cSPtr;
+    return move(cSPtr);
 }
