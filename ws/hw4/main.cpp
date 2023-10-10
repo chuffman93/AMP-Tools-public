@@ -7,8 +7,9 @@
 // Include the header of the shared class
 #include "HelpfulClass.h"
 #include "MyLinkManipulator.h"
-#include "MyGridCSpace2D.h"
 #include "MyGridCSpace2DConstructor.h"
+#include "MyGridCSpace2D.h"
+
 
 using namespace amp;
 using namespace std;
@@ -141,6 +142,12 @@ int main(int argc, char** argv) {
         Polygon cSpObj(cObj);
         vector<string> cSpName{"C-Space Object"};
         vector<Polygon> polygon{cSpObj};
+
+        for(int i = 0; i < cObj.size(); i++)
+        {
+            printf("Vert %d = (%.2f, %.2f)\n", i, cObj[i][0], cObj[i][1]);
+        }
+
         Visualizer::makeFigure(polygon, cSpName, true);
 
         // b
@@ -188,7 +195,6 @@ int main(int argc, char** argv) {
         MyLinkManipulator b(linkLensb);
         ManipulatorState tarSt = b.getConfigurationFromIK(endTarget);
         Visualizer::makeFigure(b, tarSt);
-        
     }
 
     // Exercise 3
@@ -196,26 +202,35 @@ int main(int argc, char** argv) {
         vector<double> linkLen{1.0, 1.0};
         MyLinkManipulator q3(linkLen);
         ManipulatorState st = vector<double>{0.0, 0.0};
-
+ 
         // a
         Environment2D env1 = HW4::getEx3Workspace1();
         Visualizer::makeFigure(env1, q3, st);
         MyGridCSpace2DConstructor GConA;
-        MyGridCSpace2D a3 = GConA.construct(q3, env1);
+        auto A = GConA.construct(q3, env1);
+        // Visualizer::makeFigure(*(A.get()));
 
         // b
         Environment2D env2 = HW4::getEx3Workspace2();
         Visualizer::makeFigure(env2, q3, st);
+        MyGridCSpace2DConstructor GConB;
+        auto B = GConB.construct(q3, env2);
+        // Visualizer::makeFigure();
 
         // c
         Environment2D env3 = HW4::getEx3Workspace3();
         Visualizer::makeFigure(env3, q3, st);
+        MyGridCSpace2DConstructor GConC;
+        auto C = GConC.construct(q3, env3);
+        // Visualizer::makeFigure();
 
-        
+        A.release();
+        B.release();
+        C.release();
     }
-    Visualizer::showFigures();
+    // Visualizer::showFigures();
     // Grade method
-    // MyGridCSpace2DConstructor GCon;
-    // amp::HW4::grade<MyLinkManipulator>(GCon, "cohu8717@colorado.edu", argc, argv);
+    MyGridCSpace2DConstructor GCon;
+    amp::HW4::grade<MyLinkManipulator>(GCon, "cohu8717@colorado.edu", argc, argv);
     return 0;
 }
