@@ -2,7 +2,7 @@
 
 unique_ptr<GridCSpace2D> MyGridCSpace2DConstructor::construct(const amp::LinkManipulator2D& manipulator, const amp::Environment2D& env)
 {
-    
+    unique_ptr<MyGridCSpace2D> ret;
     int m = 100;
     int n = 100;
     double x0_max = 2*M_PI;
@@ -13,21 +13,21 @@ unique_ptr<GridCSpace2D> MyGridCSpace2DConstructor::construct(const amp::LinkMan
     double x1Diff = (x1_max - x1_min)/n;
     
     
-    cSPtr.reset(&cSpace);
-
     double x0 = x0_min;
     double x1 = x1_min;
 
-    // printf("cSpace size(%ld, %ld)\n",  cSPtr->size().first,     cSPtr->size().second);
-    // printf("x0 bounds (%.2f, %.2f)\n", cSPtr->x0Bounds().first, cSPtr->x0Bounds().second);
-    // printf("x1 bounds (%.2f, %.2f)\n", cSPtr->x1Bounds().first, cSPtr->x1Bounds().second);
+    printf("cSpace size(%ld, %ld)\n",  cSpace.size().first,     cSpace.size().second);
+    printf("x0 bounds (%.2f, %.2f)\n", cSpace.x0Bounds().first, cSpace.x0Bounds().second);
+    printf("x1 bounds (%.2f, %.2f)\n", cSpace.x1Bounds().first, cSpace.x1Bounds().second);
 
     for(int i = 0; i < m; i++)
     {
         for(int j = 0; j < n; j++)
         {
-            cSPtr->operator()(i,j) = cSPtr->inCollision(x0+(x0Diff*i), x1+(x1Diff*j));
+            cSpace(i,j) = cSpace.inCollision(x0+(x0Diff*i), x1+(x1Diff*j));
         }
     }
-    return move(cSPtr);
+    cout << cSpace.data()[0] << endl;
+    ret.reset(&cSpace);
+    return ret;
 }

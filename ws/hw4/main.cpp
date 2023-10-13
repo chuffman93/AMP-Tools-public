@@ -212,7 +212,7 @@ int main(int argc, char** argv) {
         Visualizer::makeFigure(env1, q3, st);
         MyGridCSpace2DConstructor GConA;
         auto A = GConA.construct(q3, env1);
-        // Visualizer::makeFigure(*(A.get()));
+        Visualizer::makeFigure(*(A.get()));
 
         // b
         Environment2D env2 = HW4::getEx3Workspace2();
@@ -232,7 +232,7 @@ int main(int argc, char** argv) {
         B.release();
         C.release();
     }
-    // Visualizer::showFigures();
+    Visualizer::showFigures();
     // Grade method
     MyGridCSpace2DConstructor GCon;
     amp::HW4::grade<MyLinkManipulator>(GCon, "cohu8717@colorado.edu", argc, argv);
