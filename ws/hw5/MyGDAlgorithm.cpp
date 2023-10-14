@@ -10,6 +10,7 @@ Path2D MyGDAlgorithm::plan(const Problem2D& problem)
     Eigen::Vector2d qNext;
     double alph = 0.01;
     Eigen::Vector2d grad;
+    printf("Objects in env: %d\n",pf.nObs);
     ret.waypoints.push_back(q);
     double gd = pf(q);
     // printf("Beginning Planning!!\n");

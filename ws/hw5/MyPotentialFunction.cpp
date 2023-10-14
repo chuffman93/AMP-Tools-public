@@ -64,7 +64,7 @@ Eigen::Vector2d MyPotentialFunction::repulsivePotential(Eigen::Vector2d q) const
             bool timeout = false;
             auto stTime = high_resolution_clock::now();
             auto stpTime = high_resolution_clock::now();
-            while(!tmpPt.isApprox(stpVec,1e-2) && !timeout)
+            while(!(tmpPt.isApprox(stpVec,1e-2)) && !timeout)
             {
                 dis = distance(q,tmpPt);
     
@@ -118,9 +118,10 @@ Eigen::Vector2d MyPotentialFunction::repulsivePotential(Eigen::Vector2d q) const
                         tmpPt[1] += yStep;
                     }  
                 }
-                if(duration_cast<seconds>(stpTime-stTime).count() > 5.0)
+                stpTime = high_resolution_clock::now();
+                if(duration_cast<seconds>(stpTime-stTime).count() > 2.0)
                 {
-                    // printf("Algorithm Timed out!\n");
+                    printf("Algorithm Timed out!\n");
                     timeout = true;
                 }
             }

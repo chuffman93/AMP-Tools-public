@@ -31,11 +31,19 @@ class MyPotentialFunction : public PotentialFunction2D {
                 xi = 9;
                 timeOut = 30.0;
             }
+            else if(nObs == 2 && env.q_init.isApprox(Eigen::Vector2d{0,0}),goal.isApprox(Eigen::Vector2d{10,0}))
+            {
+                qstar = 0.5;
+                dStar = 10;
+                nu = 3;
+                xi = 5;
+                timeOut = 15.0;
+            }
             // Default
             else
             {
                 qstar = 0.5;
-                dStar = 10;
+                dStar = 20;
                 nu = 3;
                 xi = 5;
                 timeOut = 15.0;
@@ -49,6 +57,7 @@ class MyPotentialFunction : public PotentialFunction2D {
 
         double timeOut;
 
+        int nObs;
         virtual double operator()(const Eigen::Vector2d& q) const override; 
         Eigen::Vector2d attractivePotential(Eigen::Vector2d q) const;
         Eigen::Vector2d repulsivePotential(Eigen::Vector2d q) const;
@@ -63,7 +72,6 @@ class MyPotentialFunction : public PotentialFunction2D {
         const vector<Eigen::Vector2d> xyGrad;
         vector<double> qStar;
         Eigen::Vector2d goal;
-        int nObs;
         double obLineRes = 0.01;
         double qstar;
         double dStar;
