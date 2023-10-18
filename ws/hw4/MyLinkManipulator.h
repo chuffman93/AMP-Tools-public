@@ -22,7 +22,7 @@ class MyLinkManipulator : public LinkManipulator2D {
         struct linkerState
         {
             vector<double> lengths;
-            vector<double> angles;
+            ManipulatorState angles;
             int numLink;
             Eigen::Vector2d endPoint;
             vector<Eigen::Matrix4d> jointPts;
@@ -39,7 +39,7 @@ class MyLinkManipulator : public LinkManipulator2D {
         /// @return Joint angle state (radians) in increasing joint index order. Must have size() ==nLinks()
         virtual ManipulatorState getConfigurationFromIK(const Eigen::Vector2d& end_effector_location) const override;
 
-        linkerState FK(vector<double> lengths, vector<double> angles) const;
+        linkerState FK(vector<double> lengths, ManipulatorState angles) const;
         linkerState IK(vector<double> lengths, Eigen::Vector2d target) const;
 
     private:

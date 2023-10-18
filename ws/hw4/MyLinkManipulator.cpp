@@ -21,7 +21,7 @@ Eigen::Matrix4d MyLinkManipulator::translate(double dx, double dy, double dz) co
     return ret;
 }
 
-MyLinkManipulator::linkerState MyLinkManipulator::FK(vector<double> lengths, vector<double> angles) const
+MyLinkManipulator::linkerState MyLinkManipulator::FK(vector<double> lengths, ManipulatorState angles) const
 {
     MyLinkManipulator::linkerState newState;
     newState.lengths = lengths;
@@ -62,11 +62,11 @@ MyLinkManipulator::linkerState MyLinkManipulator::IK(vector<double> lengths, Eig
     MyLinkManipulator::linkerState curr;
     MyLinkManipulator::linkerState ret;
 
-    vector<double> Ang;
+    ManipulatorState Ang;
 
     for(int i = 0; i < lengths.size(); i++)
     {
-        Ang.push_back(0.1);
+        Ang[i] = 0.1;
     }
 
     Eigen::Vector2d base = this->getBaseLocation();

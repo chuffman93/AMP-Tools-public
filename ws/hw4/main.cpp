@@ -180,7 +180,7 @@ int main(int argc, char** argv) {
         vector<double> linkLens{0.5, 1.0, 0.5};
         Eigen::Vector2d nBase{2.0,2.0};
         MyLinkManipulator a(linkLens);
-        ManipulatorState ast = vector<double>{M_PI/6, M_PI/3, 7*M_PI/4};
+        ManipulatorState ast = Eigen::Vector3d{M_PI/6, M_PI/3, 7*M_PI/4};
         Visualizer::makeFigure(a, ast);
         int jtIdx = 3;
         Eigen::Vector2d endEff = a.getJointLocation(ast, jtIdx);
@@ -205,7 +205,7 @@ int main(int argc, char** argv) {
     {
         vector<double> linkLen{1.0, 1.0};
         MyLinkManipulator q3(linkLen);
-        ManipulatorState st = vector<double>{0.0, 0.0};
+        ManipulatorState st = Eigen::Vector2d{0.0, 0.0};
  
         // a
         Environment2D env1 = HW4::getEx3Workspace1();

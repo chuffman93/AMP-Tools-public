@@ -1,7 +1,11 @@
+#include <queue>
+#include <map>
+
 #include "AMPCore.h"
 #include "hw/HW6.h"
 
 using namespace amp;
+using namespace std;
 
 class MyGridCSpace : public amp::GridCSpace2D {
     public:
@@ -63,13 +67,85 @@ class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
 class MyAStarAlgo : public amp::AStar {
     public:
         virtual GraphSearchResult search(const amp::ShortestPathProblem& problem, const amp::SearchHeuristic& heuristic) override {
-            return GraphSearchResult();
+            GraphSearchResult ret;
+
+            Node st = problem.init_node;
+            Node g = problem.goal_node;
+            Node bst;
+
+            vector<Node> childs;
+            vector<Node> weights;
+           
+            cout << "Start Node: " << st << " Goal Node: " << g << endl;
+
+            typedef pair<double, Node> nW;
+            map <Node, double> dist;
+            map <Node, Node> path;
+            
+            priority_queue<nW, vector<nW>, greater<nW> > O;
+            list<Node> Ol;
+            list<Node> C;
+            list<Node> q;
+
+            O.push(make_pair(0,st));
+            dist.insert({st,0});
+            Ol.push_back(st);
+
+            int itrCount = 0;
+            while(!O.empty())
+            {
+                bst = O.top().first;
+                O.pop();
+                Ol.remove(bst);
+                C.push_back(bst);
+
+                if (bst == g)
+                {
+                    q.push_back(g);
+                    break;
+                }
+
+                childs = problem.graph->children(bst);
+                weights = problem.graph->outgoingEdges(bst);
+
+                for(int i = 0; i < childs.size(); i++)
+                {
+                    
+                    if(find(C.begin(), C.end(), childs[i]) != C.end())
+                    {
+                        continue;
+                    }
+
+                    if(find(Ol.begin(), Ol.end(), childs[i]) == Ol.end())
+                    {
+                        O.push(make_pair(((double)(heuristic(childs[i])+weights[i]),childs[i]));
+                        Ol.push_back(childs[i]);
+                        dist.insert({childs[i],(double)(weights[i] + dist.find(bst)->second)})
+                    }
+                    else if((dist.find(bst)->second + weights[i] ) < dist.find(childs[i])->second)
+                    {
+
+                    }
+                }
+                itr += 1;
+
+            }
+
+            return ret;
         }
 };
 
 int main(int argc, char** argv) {
     amp::RNG::seed(amp::RNG::randiUnbounded());
+    // Exercise 3
+    {
+        MyAStarAlgo ex3;
+        amp::ShortestPathProblem ex3p = HW6::getEx3SPP();
+        amp::SearchHeuristic ex3h = HW6::getEx3Heuristic();
+        amp::AStar::GraphSearchResult res = ex3.search(ex3p, ex3h);
 
-    amp::HW6::grade<MyPointWFAlgo, MyManipWFAlgo, MyAStarAlgo>("nonhuman.biologic@myspace.edu", argc, argv, std::make_tuple(), std::make_tuple("hey therre"), std::make_tuple());
+    }
+
+    // amp::HW6::grade<MyPointWFAlgo, MyManipWFAlgo, MyAStarAlgo>("nonhuman.biologic@myspace.edu", argc, argv, std::make_tuple(), std::make_tuple("hey therre"), std::make_tuple());
     return 0;
 }
