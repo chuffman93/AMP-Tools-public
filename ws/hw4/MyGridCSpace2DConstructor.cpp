@@ -2,7 +2,7 @@
 
 unique_ptr<GridCSpace2D> MyGridCSpace2DConstructor::construct(const amp::LinkManipulator2D& manipulator, const amp::Environment2D& env)
 {
-    unique_ptr<MyGridCSpace2D> ret;
+    unique_ptr<MyGridCSpace> ret;
     int m = 100;
     int n = 100;
     double x0_max = 2*M_PI;
