@@ -66,7 +66,122 @@ class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
 
 class MyAStarAlgo : public amp::AStar {
     public:
-        virtual GraphSearchResult search(const amp::ShortestPathProblem& problem, const amp::SearchHeuristic& heuristic) override {
+        virtual GraphSearchResult search(const amp::ShortestPathProblem& problem, const amp::SearchHeuristic& heuristic) override 
+        {
+            GraphSearchResult ret;
+
+            Node st = problem.init_node;
+            Node g = problem.goal_node;
+            Node bst;
+
+            vector<Node> childs;
+            vector<double> weights;
+           
+            typedef tuple<double, double, Node> nW;
+            map <Node, double> dist;
+            map <Node, Node> bkPtr;
+            
+            priority_queue<nW, vector<nW>, greater<nW> > O;
+            priority_queue<nW, vector<nW>, greater<nW> > tmpQ;
+            nW tmpTp;
+            list<Node> Ol;
+            list<Node> C;
+            list<Node> q;
+
+            double gn;
+            double h;
+            double f;
+
+            O.push(make_tuple(0, 0, st));
+            dist.insert({st, 0});
+            Ol.push_back(st);
+            q.push_back(st);
+
+            int itrCount = 0;
+
+            while(!O.empty())
+            {
+                tmpQ = O;
+
+                bst = get<2>(O.top());
+                O.pop();
+                Ol.remove(bst);
+                C.push_back(bst);
+
+                if (bst == g)
+                {
+                    q.push_back(g);
+                    break;
+                }
+
+                childs = problem.graph->children(bst);
+                weights = problem.graph->outgoingEdges(bst);
+
+                for(int i = 0; i < childs.size(); i++)
+                {
+                    
+                    if(find(C.begin(), C.end(), childs[i]) != C.end())
+                    {
+                        continue;
+                    }
+
+                    if(find(Ol.begin(), Ol.end(), childs[i]) == Ol.end())
+                    {
+                        h = heuristic.operator()(childs[i]);
+                        gn = weights[i] + dist.find(bst)->second;
+                        O.push( make_tuple(h + gn, gn, childs[i]) );
+                        Ol.push_back(childs[i]);
+                        dist.insert({childs[i], gn});
+                        bkPtr.insert({childs[i], bst});
+                    }
+                    else if((dist.find(bst)->second + weights[i] ) < dist.find(childs[i])->second)
+                    {
+                        h = heuristic.operator()(childs[i]);
+                        gn = weights[i] + dist.find(bst)->second;
+                        O.push( make_tuple(h + gn, gn, childs[i]) );
+                        bkPtr.find(childs[i])->second = bst;
+                        dist.find(childs[i])->second = gn;
+                    }
+                }
+                itrCount += 1;
+                tmpQ = O;
+            }
+            Node tmp;
+            if (q.back() == g)
+            {
+                tmp = g;
+                
+                while(bkPtr.find(tmp)->second != st)
+                {
+                    auto it = q.begin();
+                    advance(it, 1);
+                    q.insert(it,bkPtr.find(tmp)->second);
+                    tmp = bkPtr.find(tmp)->second;
+                }
+                ret.node_path = q;
+                ret.success = true;
+                ret.path_cost = dist.find(g)->second;
+
+            }
+            else
+            {
+                ret.node_path = q;
+                ret.success = false;
+                ret.path_cost = -1;
+
+            }
+            printf("Path %s with length of the path { ", ret.success ? "found" : "not found"); 
+            for(auto i : q)
+            {   
+                cout << i << " ";
+            }
+            printf("} is %.2f found in %d iterations\n",ret.path_cost, itrCount);
+
+            return ret;
+        }
+
+        GraphSearchResult dij_search(const amp::ShortestPathProblem& problem)
+        {
             GraphSearchResult ret;
 
             Node st = problem.init_node;
@@ -91,7 +206,7 @@ class MyAStarAlgo : public amp::AStar {
             double h;
             double f;
 
-            O.push(make_pair(0,st));
+            O.push(make_pair(0, st));
             dist.insert({st, 0});
             Ol.push_back(st);
             q.push_back(st);
@@ -116,31 +231,28 @@ class MyAStarAlgo : public amp::AStar {
                 childs = problem.graph->children(bst);
                 weights = problem.graph->outgoingEdges(bst);
 
-                printf("Best Node: %d\n", bst);
-
                 for(int i = 0; i < childs.size(); i++)
                 {
-                    printf("Child Node: %d\n", childs[i]);
                     
                     if(find(C.begin(), C.end(), childs[i]) != C.end())
                     {
-                        printf("Child %d found!!\n", childs[i]);
                         continue;
                     }
 
-                    if(find(Ol.begin(), Ol.end(), childs[i]) == Ol.end() || Ol.empty())
+                    if(find(Ol.begin(), Ol.end(), childs[i]) == Ol.end())
                     {
-                        h = heuristic.operator()(childs[i]);
                         gn = weights[i] + dist.find(bst)->second;
-                        printf("Heur Return: %.2f, Length: %.2f for Node: %d\n",h, gn, childs[i]);
-                        O.push( make_pair(h + gn, childs[i]) );
+                        O.push( make_pair(gn, childs[i]) );
                         Ol.push_back(childs[i]);
                         dist.insert({childs[i], gn});
                         bkPtr.insert({childs[i], bst});
                     }
                     else if((dist.find(bst)->second + weights[i] ) < dist.find(childs[i])->second)
                     {
+                        gn = weights[i] + dist.find(bst)->second;
+                        O.push( make_pair(gn, childs[i]) );
                         bkPtr.find(childs[i])->second = bst;
+                        dist.find(childs[i])->second = gn;
                     }
                 }
                 itrCount += 1;
@@ -160,7 +272,7 @@ class MyAStarAlgo : public amp::AStar {
                 }
                 ret.node_path = q;
                 ret.success = true;
-                ret.path_cost = round(dist.find(g)->second*1000.0)/1000.0;
+                ret.path_cost = dist.find(g)->second;
 
             }
             else
@@ -183,16 +295,23 @@ class MyAStarAlgo : public amp::AStar {
 
 int main(int argc, char** argv) {
     amp::RNG::seed(amp::RNG::randiUnbounded());
+    // Exercise 1
+    {
+
+    }
+
     // Exercise 3
     {
         MyAStarAlgo ex3;
         amp::ShortestPathProblem ex3p = HW6::getEx3SPP();
         amp::LookupSearchHeuristic ex3h = HW6::getEx3Heuristic();
         amp::AStar::GraphSearchResult res = ex3.search(ex3p, ex3h);
+        amp::AStar::GraphSearchResult resD = ex3.dij_search(ex3p);
 
         bool ex3Pass = HW6::checkGraphSearchResult(res, ex3p, ex3h, true);
+        bool ex3PassD = HW6::checkGraphSearchResult(resD, ex3p, ex3h, true);
     }
 
-    // amp::HW6::grade<MyPointWFAlgo, MyManipWFAlgo, MyAStarAlgo>("nonhuman.biologic@myspace.edu", argc, argv, std::make_tuple(), std::make_tuple("hey therre"), std::make_tuple());
+    amp::HW6::grade<MyPointWFAlgo, MyManipWFAlgo, MyAStarAlgo>("nonhuman.biologic@myspace.edu", argc, argv, std::make_tuple(), std::make_tuple("hey therre"), std::make_tuple());
     return 0;
 }
