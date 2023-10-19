@@ -74,13 +74,13 @@ class MyAStarAlgo : public amp::AStar {
             Node bst;
 
             vector<Node> childs;
-            vector<Node> weights;
+            vector<double> weights;
            
             cout << "Start Node: " << st << " Goal Node: " << g << endl;
 
             typedef pair<double, Node> nW;
             map <Node, double> dist;
-            map <Node, Node> path;
+            map <Node, Node> bkPtr;
             
             priority_queue<nW, vector<nW>, greater<nW> > O;
             list<Node> Ol;
@@ -88,13 +88,17 @@ class MyAStarAlgo : public amp::AStar {
             list<Node> q;
 
             O.push(make_pair(0,st));
-            dist.insert({st,0});
+            dist.insert({0,st});
             Ol.push_back(st);
+            q.push_back(st);
 
             int itrCount = 0;
+
+            double tmpDist;
+
             while(!O.empty())
             {
-                bst = O.top().first;
+                bst = O.top().second;
                 O.pop();
                 Ol.remove(bst);
                 C.push_back(bst);
@@ -118,18 +122,51 @@ class MyAStarAlgo : public amp::AStar {
 
                     if(find(Ol.begin(), Ol.end(), childs[i]) == Ol.end())
                     {
-                        O.push(make_pair(((double)(heuristic(childs[i])+weights[i]),childs[i]));
+                        tmpDist = heuristic(childs[i]) + weights[i] + dist.find(bst)->second;
+                        O.push( make_pair(tmpDist, childs[i]) );
                         Ol.push_back(childs[i]);
-                        dist.insert({childs[i],(double)(weights[i] + dist.find(bst)->second)})
+                        dist.insert({childs[i],(double)(weights[i] + dist.find(bst)->second)});
+                        bkPtr.insert({childs[i], bst});
                     }
                     else if((dist.find(bst)->second + weights[i] ) < dist.find(childs[i])->second)
                     {
-
+                        bkPtr.find(childs[i])->second = bst;
                     }
                 }
-                itr += 1;
+                itrCount += 1;
 
             }
+            Node tmp;
+            if (q.back() == g)
+            {
+                tmp = g;
+                
+                while(bkPtr.find(tmp)->second != st)
+                {
+                    auto it = q.begin();
+                    advance(it, 1);
+                    printf("tmp = %d, bkPrt = %d\n", tmp, bkPtr.find(tmp)->second);
+                    q.insert(it,bkPtr.find(tmp)->second);
+                    tmp = bkPtr.find(tmp)->second;
+                }
+                ret.node_path = q;
+                ret.success = true;
+                ret.path_cost = dist.find(g)->second;
+
+            }
+            else
+            {
+                ret.node_path = q;
+                ret.success = false;
+                ret.path_cost = -1;
+
+            }
+            printf("Path %s with length of the path { ", ret.success ? "found" : "not found"); 
+            for(auto i : q)
+            {   
+                cout << i << " ";
+            }
+            printf("} is %.2f found in %d iterations\n",ret.path_cost, itrCount);
 
             return ret;
         }
@@ -143,6 +180,8 @@ int main(int argc, char** argv) {
         amp::ShortestPathProblem ex3p = HW6::getEx3SPP();
         amp::SearchHeuristic ex3h = HW6::getEx3Heuristic();
         amp::AStar::GraphSearchResult res = ex3.search(ex3p, ex3h);
+
+        bool ex3Pass = HW6::checkGraphSearchResult(res, ex3p, ex3h, true);
 
     }
 
