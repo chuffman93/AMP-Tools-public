@@ -76,28 +76,32 @@ class MyAStarAlgo : public amp::AStar {
             vector<Node> childs;
             vector<double> weights;
            
-            cout << "Start Node: " << st << " Goal Node: " << g << endl;
-
             typedef pair<double, Node> nW;
             map <Node, double> dist;
             map <Node, Node> bkPtr;
             
             priority_queue<nW, vector<nW>, greater<nW> > O;
+            priority_queue<nW, vector<nW>, greater<nW> > tmpQ;
+            nW tmpTp;
             list<Node> Ol;
             list<Node> C;
             list<Node> q;
 
+            double gn;
+            double h;
+            double f;
+
             O.push(make_pair(0,st));
-            dist.insert({0,st});
+            dist.insert({st, 0});
             Ol.push_back(st);
             q.push_back(st);
 
             int itrCount = 0;
 
-            double tmpDist;
-
             while(!O.empty())
             {
+                tmpQ = O;
+
                 bst = O.top().second;
                 O.pop();
                 Ol.remove(bst);
@@ -112,20 +116,26 @@ class MyAStarAlgo : public amp::AStar {
                 childs = problem.graph->children(bst);
                 weights = problem.graph->outgoingEdges(bst);
 
+                printf("Best Node: %d\n", bst);
+
                 for(int i = 0; i < childs.size(); i++)
                 {
+                    printf("Child Node: %d\n", childs[i]);
                     
                     if(find(C.begin(), C.end(), childs[i]) != C.end())
                     {
+                        printf("Child %d found!!\n", childs[i]);
                         continue;
                     }
 
-                    if(find(Ol.begin(), Ol.end(), childs[i]) == Ol.end())
+                    if(find(Ol.begin(), Ol.end(), childs[i]) == Ol.end() || Ol.empty())
                     {
-                        tmpDist = heuristic(childs[i]) + weights[i] + dist.find(bst)->second;
-                        O.push( make_pair(tmpDist, childs[i]) );
+                        h = heuristic.operator()(childs[i]);
+                        gn = weights[i] + dist.find(bst)->second;
+                        printf("Heur Return: %.2f, Length: %.2f for Node: %d\n",h, gn, childs[i]);
+                        O.push( make_pair(h + gn, childs[i]) );
                         Ol.push_back(childs[i]);
-                        dist.insert({childs[i],(double)(weights[i] + dist.find(bst)->second)});
+                        dist.insert({childs[i], gn});
                         bkPtr.insert({childs[i], bst});
                     }
                     else if((dist.find(bst)->second + weights[i] ) < dist.find(childs[i])->second)
@@ -134,7 +144,7 @@ class MyAStarAlgo : public amp::AStar {
                     }
                 }
                 itrCount += 1;
-
+                tmpQ = O;
             }
             Node tmp;
             if (q.back() == g)
@@ -145,13 +155,12 @@ class MyAStarAlgo : public amp::AStar {
                 {
                     auto it = q.begin();
                     advance(it, 1);
-                    printf("tmp = %d, bkPrt = %d\n", tmp, bkPtr.find(tmp)->second);
                     q.insert(it,bkPtr.find(tmp)->second);
                     tmp = bkPtr.find(tmp)->second;
                 }
                 ret.node_path = q;
                 ret.success = true;
-                ret.path_cost = dist.find(g)->second;
+                ret.path_cost = round(dist.find(g)->second*1000.0)/1000.0;
 
             }
             else
@@ -178,11 +187,10 @@ int main(int argc, char** argv) {
     {
         MyAStarAlgo ex3;
         amp::ShortestPathProblem ex3p = HW6::getEx3SPP();
-        amp::SearchHeuristic ex3h = HW6::getEx3Heuristic();
+        amp::LookupSearchHeuristic ex3h = HW6::getEx3Heuristic();
         amp::AStar::GraphSearchResult res = ex3.search(ex3p, ex3h);
 
         bool ex3Pass = HW6::checkGraphSearchResult(res, ex3p, ex3h, true);
-
     }
 
     // amp::HW6::grade<MyPointWFAlgo, MyManipWFAlgo, MyAStarAlgo>("nonhuman.biologic@myspace.edu", argc, argv, std::make_tuple(), std::make_tuple("hey therre"), std::make_tuple());
