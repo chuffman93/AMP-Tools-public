@@ -4,162 +4,272 @@
 #include "AMPCore.h"
 #include "hw/HW6.h"
 #include "hw/HW2.h"
+#include "myUtils.h"
 
 using namespace amp;
 using namespace std;
 
-
-struct line {
-    Eigen::Vector2d p1, p2;
-};
-
-int linDir(Eigen::Vector2d a, Eigen::Vector2d b, Eigen::Vector2d c)
-{
-    int val = (b[1] - a[1]) * (c[0] - b[0]) - (b[0] - a[0]) * (c[1] - b[1]);
-    if(val == 0)
-    {
-        return 0;
-    }
-    else if(val < 0)
-    {
-        return 2;
-    }
-    return 1;
-}
-
-bool onL(line a, Eigen::Vector2d b)
-{
-    if(b[0] <= max(a.p1[0], a.p2[0]) && b[0] >= min(a.p1[0], a.p2[0])
-    && b[1] <= max(a.p1[1], a.p2[1]) && b[1] >= min(a.p1[1], a.p2[1]))
-    {
-        return true;
-    }
-    return false;
-}
-
-bool isInt(line a, line b)
-{
-    int d1 = linDir(a.p1, a.p2, b.p1);
-    int d2 = linDir(a.p1, a.p2, b.p2);
-    int d3 = linDir(b.p1, b.p2, a.p1);
-    int d4 = linDir(b.p1, b.p2, a.p2);
-
-    if(d1 != d2 && d3 != d4)
-    {
-        return true;
-    }
-
-    if(d1 == 0 && onL(a,b.p1))
-    {
-        return true;
-    }
-
-    if(d2 == 0 && onL(a,b.p2))
-    {
-        return true;
-    }
-
-    if(d3 == 0 && onL(b,a.p1))
-    {
-        return true;
-    }
-
-    if(d4 == 0 && onL(b,a.p2))
-    {
-        return true;
-    }
-
-    return false;
-
-}
-
-bool checkInObj(line p, vector<Eigen::Vector2d> verts)
-{
-    int count = 0;
-    for(int wI = 0; wI < verts.size()-1; wI++)
-    {
-        line v{verts[wI], verts[wI+1]};
-        if(isInt(v,p))
-        {
-            if(linDir(v.p1, p.p1, v.p2) == 0)
-            {
-                return onL(v, p.p1);
-            } 
-            count++;
-        }
-    }
-    return count & 1;
-}
+myUtils hw6Utils;
 
 class MyGridCSpace : public amp::GridCSpace2D {
     public:
         //MyGridCSpace()
         //    : amp::GridCSpace2D(1, 1, 0.0, 1.0, 0.0, 1.0) {}
+        MyGridCSpace(double a, std::size_t x0_cells, std::size_t x1_cells, double x0_min, double x0_max, double x1_min, double x1_max)
+            : amp::GridCSpace2D(x0_cells, x1_cells, x0_min, x0_max, x1_min, x1_max) {
+                xMin = x0_min;
+                yMin = x1_min;
+                dis = a;
+            }
+
         MyGridCSpace(std::size_t x0_cells, std::size_t x1_cells, double x0_min, double x0_max, double x1_min, double x1_max)
             : amp::GridCSpace2D(x0_cells, x1_cells, x0_min, x0_max, x1_min, x1_max) {
                 xMin = x0_min;
                 yMin = x1_min;
+                dis = 0.25;
             }
 
         virtual std::pair<std::size_t, std::size_t> getCellFromPoint(double x0, double x1) const {
-            return make_pair(floor(x0/0.25)-((this->xMin)/0.25), floor(x1/0.25)-((this->yMin)/0.25));
+            return make_pair(floor(x0/this->dis)-((this->xMin)/this->dis), floor(x1/this->dis)-((this->yMin)/this->dis));
         }
-
+        double dis;
         double xMin;
         double yMin;
 };
 
 class MyPointWFAlgo : public amp::PointWaveFrontAlgorithm {
     public:
+        MyPointWFAlgo()
+        {
+            dis = 0.25;
+        }
+
+        MyPointWFAlgo(double a)
+        {
+            dis = a;
+        }
+
+        double dis;
+
         virtual std::unique_ptr<amp::GridCSpace2D> constructDiscretizedWorkspace(const amp::Environment2D& environment) override {
             double x0min = environment.x_min;
             double x0max = environment.x_max;
             double x1min = environment.y_min;
             double x1max = environment.y_max;
 
-            double dis = 0.25;
 
             pair<size_t, size_t> tmp;
 
-            std::size_t x0cells = (abs(x0min) + abs(x0max)) / dis;
-            std::size_t x1cells = (abs(x1min) + abs(x1max)) / dis;
-            unique_ptr<MyGridCSpace> ret = std::make_unique<MyGridCSpace>(x0cells, x1cells, x0min, x0max, x1min, x1max);
+            std::size_t x0cells = (abs(x0min) + abs(x0max)) / this->dis;
+            std::size_t x1cells = (abs(x1min) + abs(x1max)) / this->dis;
+            unique_ptr<MyGridCSpace> ret = std::make_unique<MyGridCSpace>(this->dis, x0cells, x1cells, x0min, x0max, x1min, x1max);
 
             vector<Obstacle2D> obs = environment.obstacles;
 
-            for(double i = x0min; i < x0max; i+=0.1)
+            Eigen::Vector2d tstPt;
+
+            for(double i = x0min; i < x0max; i+=(this->dis/4) )
             {
-                for(double j = x1min; j < x1max; j+=0.1)
+                for(double j = x1min; j < x1max; j+=(this->dis/4) )
                 {
                     // printf("x0: %.2f x1: %.2f\n", i,j);
-                    tmp = ret->getCellFromPoint(i, j);
-                    // printf("Cell {%ld, %ld}\n", tmp.first, tmp.second);
-                    // sleep(0.8);
-                    line p{Eigen::Vector2d{i,j}, Eigen::Vector2d{9999,j}};
-
+                   
+                    tmp = ret->getCellFromPoint(i,j);
+                    if(ret->operator()(tmp.first, tmp.second))
+                    {
+                        continue;
+                    }                   
                     for(int k = 0; k < obs.size(); k++)
                     {
                         // printf("Obj # %d\n", k);
                         vector<Eigen::Vector2d> verts = obs[k].verticesCCW();
-                        verts.push_back(verts[0]);
-
-                        ret->operator()(tmp.first, tmp.second) = checkInObj(p, verts);
+                        verts.push_back(verts[0]); 
+                        if(hw6Utils.checkInObj(Eigen::Vector2d{i,j}, verts))
+                        {
+                            ret->operator()(tmp.first, tmp.second) = true;
+                            break;
+                        }
                     }
                 }
             }            
             return ret;
         }
 
-        // This is just to get grade to work, you DO NOT need to override this method
-        virtual amp::Path2D plan(const amp::Problem2D& problem) override {
-            return amp::Path2D();
-        }
-
         // You need to implement here
         virtual amp::Path2D planInCSpace(const Eigen::Vector2d& q_init, const Eigen::Vector2d& q_goal, const amp::GridCSpace2D& grid_cspace) override {
+            Path2D ret;
             
-            
-            return amp::Path2D();
+            map< pair<size_t, size_t> , int > wave;
+
+            queue< pair<size_t,size_t> > tiles;
+
+            pair<size_t, size_t> tmp;
+
+            pair<size_t, size_t> stCell = grid_cspace.getCellFromPoint(q_init[0], q_init[1]);
+            pair<size_t, size_t> gCell  = grid_cspace.getCellFromPoint(q_goal[0], q_goal[1]);
+
+            pair<size_t, size_t> up; 
+            pair<size_t, size_t> down; 
+            pair<size_t, size_t> left; 
+            pair<size_t, size_t> right; 
+
+            pair<double,double> x0 = grid_cspace.x0Bounds();
+            pair<double,double> x1 = grid_cspace.x1Bounds();
+
+            int xMax = floor( (x0.second/this->dis)-(x0.first/this->dis) );
+            int yMax = floor( (x1.second/this->dis)-(x1.first/this->dis) );
+
+            bool found = false;
+
+            tiles.push(gCell);
+            wave.insert({gCell, 2});
+            ret.waypoints.push_back(q_init);
+            while(!tiles.empty())
+            {
+                tmp = tiles.front();
+                tiles.pop();
+
+                if(tmp.second == stCell.second && tmp.first == stCell.first)
+                {   
+                    found = true;
+                    break;
+                }
+
+                if(wave.find(tmp)->second == 1)
+                {
+                    continue;
+                }
+
+                up = make_pair(tmp.first, tmp.second+1);
+                down = make_pair(tmp.first, tmp.second-1);
+                left = make_pair(tmp.first-1, tmp.second);
+                right = make_pair(tmp.first+1, tmp.second);
+
+                if( (up.first >= 0 && up.first < xMax) 
+                &&  (up.second >= 0 && up.second < yMax) 
+                &&  wave.find(up) == wave.end())
+                {
+                    tiles.push(up);
+                    if(grid_cspace.operator()(up.first, up.second))
+                    {
+                        wave.insert({up, 1});
+                    }
+                    else if((wave.find(tmp)->second) > 1)
+                    {
+                        wave.insert({up, (wave.find(tmp)->second)+1});
+                    }
+                }
+
+                if( (down.first >= 0 && down.first < xMax) 
+                &&  (down.second >= 0 && down.second < yMax) 
+                &&  wave.find(down) == wave.end())
+                {
+                    tiles.push(down);
+                    if(grid_cspace.operator()(down.first, down.second))
+                    {
+                        wave.insert({down, 1});
+                    }
+                    else
+                    {
+                        wave.insert({down, (wave.find(tmp)->second)+1});
+                    }
+                }
+
+                if( (left.first >= 0 && left.first < xMax) 
+                &&  (left.second >= 0 && left.second < yMax) 
+                &&  wave.find(left) == wave.end())
+                {
+                    if(grid_cspace.operator()(left.first, left.second))
+                    {
+                        wave.insert({left, 1});
+                    }
+                    else
+                    {
+                        wave.insert({left, (wave.find(tmp)->second)+1});
+                    }
+                    tiles.push(left);
+                }
+
+                if( (right.first >= 0 && right.first < xMax) 
+                &&  (right.second >= 0 && right.second < yMax) 
+                &&  wave.find(right) == wave.end())
+                {
+                    if(grid_cspace.operator()(right.first, right.second))
+                    {
+                        wave.insert({right, 1});
+                    }
+                    else
+                    {
+                        wave.insert({right, (wave.find(tmp)->second)+1});
+                    }
+                    tiles.push(right);
+                }
+            }
+
+            int key = wave.find(stCell)->second;
+            tmp = stCell;
+
+            if(!found)
+            {
+                ret.waypoints.push_back(q_goal);
+                return ret;
+            }
+
+            while(true)
+            {
+                up = make_pair(tmp.first, tmp.second+1);
+                down = make_pair(tmp.first, tmp.second-1);
+                left = make_pair(tmp.first-1, tmp.second);
+                right = make_pair(tmp.first+1, tmp.second);
+
+                if(tmp.first == gCell.first && tmp.second == gCell.second)
+                {
+                    break;
+                }
+
+                if( (up.first >= 0 && up.first < xMax) 
+                &&  (up.second >= 0 && up.second < yMax)
+                && wave.find(up) != wave.end() && wave.find(up)->second == key-1)
+                {
+                    key = key-1;
+                    tmp = up;
+                    ret.waypoints.push_back(Eigen::Vector2d{ 
+                        ((x0.first+(this->dis*up.first)) + (x0.first+(this->dis*(up.first+1))))/2,
+                        ((x1.first+(this->dis*up.second)) + (x1.first+(this->dis*(up.second+1))))/2});
+                }
+                else if( (down.first >= 0 && down.first < xMax) 
+                &&  (down.second >= 0 && down.second < yMax)
+                && wave.find(down) != wave.end() && wave.find(down)->second == key-1)
+                {
+                    key = key-1;
+                    tmp = down;
+                    ret.waypoints.push_back(Eigen::Vector2d{ 
+                        ((x0.first+(this->dis*down.first)) + (x0.first+(this->dis*(down.first+1))))/2,
+                        ((x1.first+(this->dis*down.second)) + (x1.first+(this->dis*(down.second+1))))/2});
+                }
+                else if( (left.first >= 0 && left.first < xMax) 
+                &&  (left.second >= 0 && left.second < yMax)
+                && wave.find(left) != wave.end() && wave.find(left)->second == key-1)
+                {
+                    key = key-1;
+                    tmp = left;
+                    ret.waypoints.push_back(Eigen::Vector2d{ 
+                        ((x0.first+(this->dis*left.first)) + (x0.first+(this->dis*(left.first+1))))/2,
+                        ((x1.first+(this->dis*left.second)) + (x1.first+(this->dis*(left.second+1))))/2});
+                }
+                else if( (right.first >= 0 && right.first < xMax) 
+                &&  (right.second >= 0 && right.second < yMax)
+                && wave.find(right) != wave.end() && wave.find(right)->second == key-1)
+                {
+                    key = key-1;
+                    tmp = right;
+                    ret.waypoints.push_back(Eigen::Vector2d{ 
+                        ((x0.first+(this->dis*right.first)) + (x0.first+(this->dis*(right.first+1))))/2,
+                        ((x1.first+(this->dis*right.second)) + (x1.first+(this->dis*(right.second+1))))/2});
+                }
+            }
+            ret.waypoints.push_back(q_goal);
+            return ret;
         }
 
 };
@@ -424,25 +534,42 @@ class MyAStarAlgo : public amp::AStar {
 int main(int argc, char** argv) {
     amp::RNG::seed(amp::RNG::randiUnbounded());
     // Exercise 1
-    if(true)
+    if(false)
     {
-        amp::Problem2D ex1a = HW2::getWorkspace1();
-        printf("Max x = %.2f\n", ex1a.x_max);
         MyPointWFAlgo ex1;
+
+        amp::Problem2D ex1a = HW2::getWorkspace1();
         amp::GridCSpace2D * ex1g = ex1.constructDiscretizedWorkspace(ex1a).release();
-        pair<size_t, size_t> tst= ex1g->getCellFromPoint(1.8,2.0);
-
-        bool p1 = ex1g->inCollision(0, 0);
-        bool p2 = ex1g->inCollision(1.4, 2.1);
-
         Visualizer::makeFigure(*ex1g);
-        printf("Grid (0,0) = %d Grid (%ld, %ld) = %d\n",p1, tst.first, tst.second, p2);
+        Path2D ex1p = ex1.planInCSpace(ex1a.q_init, ex1a.q_goal, *ex1g);
+        Visualizer::makeFigure(ex1a,ex1p);
+        bool ex1aPass = HW6::checkPointAgentPlan(ex1p,ex1a,true);
 
         Problem2D ex1b = HW2::getWorkspace2();
-        Visualizer::showFigures(); 
+        amp::GridCSpace2D * ex1gb = ex1.constructDiscretizedWorkspace(ex1b).release();
+        Visualizer::makeFigure(*ex1gb);
+        Path2D ex1pb = ex1.planInCSpace(ex1b.q_init, ex1b.q_goal, *ex1gb);
+        Visualizer::makeFigure(ex1b,ex1pb);
+        bool ex1bPass = HW6::checkPointAgentPlan(ex1pb,ex1b,true);
+
+        const Random2DEnvironmentSpecification spec;
+
+        MyPointWFAlgo ex2;
+        Problem2D r1 =  EnvironmentTools::generateRandomPointAgentProblem(spec,0u);
+        amp::GridCSpace2D * r1g = ex2.constructDiscretizedWorkspace(r1).release();
+        Visualizer::makeFigure(*r1g);
+        Path2D r1p = ex2.planInCSpace(r1.q_init, r1.q_goal, *r1g);
+        Visualizer::makeFigure(r1,r1p);
+        bool r1pass = HW6::checkPointAgentPlan(r1p,r1,true);
+
+
+        bool ex1CPass = HW6::generateAndCheck(ex2, true, 0U);
+
+        Visualizer::showFigures();
     }
 
     // Exercise 2
+    if(false)
     {
 
     }
@@ -460,6 +587,6 @@ int main(int argc, char** argv) {
         bool ex3PassD = HW6::checkGraphSearchResult(resD, ex3p, ex3h, true);
     }
 
-    // amp::HW6::grade<MyPointWFAlgo, MyManipWFAlgo, MyAStarAlgo>("nonhuman.biologic@myspace.edu", argc, argv, std::make_tuple(), std::make_tuple("hey therre"), std::make_tuple());
+    amp::HW6::grade<MyPointWFAlgo, MyManipWFAlgo, MyAStarAlgo>("corey.huffman@colorado.edu", argc, argv, std::make_tuple(0.25), std::make_tuple(), std::make_tuple());
     return 0;
 }

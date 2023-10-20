@@ -5,7 +5,7 @@
 #include "hw/HW4.h"
 
 // Include the header of the shared class
-#include "HelpfulClass.h"
+#include "myUtils.h"
 #include "MyLinkManipulator.h"
 #include "MyGridCSpace2DConstructor.h"
 #include "MyGridCSpace2D.h"
