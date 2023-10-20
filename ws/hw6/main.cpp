@@ -78,9 +78,7 @@ bool checkInObj(line p, vector<Eigen::Vector2d> verts)
     int count = 0;
     for(int wI = 0; wI < verts.size()-1; wI++)
     {
-        printf("verts # %d + %d\n", wI, wI+1);
         line v{verts[wI], verts[wI+1]};
-
         if(isInt(v,p))
         {
             if(linDir(v.p1, p.p1, v.p2) == 0)
@@ -133,29 +131,19 @@ class MyPointWFAlgo : public amp::PointWaveFrontAlgorithm {
             {
                 for(double j = x1min; j < x1max; j+=0.1)
                 {
-                    printf("x0: %.2f x1: %.2f\n", i,j);
+                    // printf("x0: %.2f x1: %.2f\n", i,j);
                     tmp = ret->getCellFromPoint(i, j);
-                    printf("Cell {%ld, %ld}\n", tmp.first, tmp.second);
-                    sleep(0.8);
+                    // printf("Cell {%ld, %ld}\n", tmp.first, tmp.second);
+                    // sleep(0.8);
                     line p{Eigen::Vector2d{i,j}, Eigen::Vector2d{9999,j}};
-
-                    if(ret->operator()(tmp.first, tmp.second))
-                    {
-                        continue;
-                    }
 
                     for(int k = 0; k < obs.size(); k++)
                     {
-                        printf("Obj # %d\n", k);
+                        // printf("Obj # %d\n", k);
                         vector<Eigen::Vector2d> verts = obs[k].verticesCCW();
                         verts.push_back(verts[0]);
 
                         ret->operator()(tmp.first, tmp.second) = checkInObj(p, verts);
-
-                        if(ret->operator()(tmp.first, tmp.second))
-                        {
-                            break;
-                        }
                     }
                 }
             }            
