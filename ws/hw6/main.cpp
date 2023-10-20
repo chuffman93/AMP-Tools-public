@@ -4,6 +4,8 @@
 #include "AMPCore.h"
 #include "hw/HW6.h"
 #include "hw/HW2.h"
+
+#include "MyLinkManipulator.h"
 #include "myUtils.h"
 
 using namespace amp;
@@ -68,9 +70,9 @@ class MyPointWFAlgo : public amp::PointWaveFrontAlgorithm {
 
             Eigen::Vector2d tstPt;
 
-            for(double i = x0min; i < x0max; i+=(this->dis/4) )
+            for(double i = x0min; i < x0max; i+=(this->dis/3) )
             {
-                for(double j = x1min; j < x1max; j+=(this->dis/4) )
+                for(double j = x1min; j < x1max; j+=(this->dis/3) )
                 {
                     // printf("x0: %.2f x1: %.2f\n", i,j);
                    
@@ -276,9 +278,27 @@ class MyPointWFAlgo : public amp::PointWaveFrontAlgorithm {
 
 class MyCSpaceCtor : public amp::GridCSpace2DConstructor {
     public:
-        virtual std::unique_ptr<amp::GridCSpace2D> construct(const amp::LinkManipulator2D& manipulator, const amp::Environment2D& env) override {            
-            return std::make_unique<MyGridCSpace>(1, 1, 0.0, 1.0, 0.0, 1.0);
+        virtual std::unique_ptr<amp::GridCSpace2D> construct(const amp::LinkManipulator2D& manipulator, const amp::Environment2D& env) override { 
+            double x0min = 0;
+            double x0max = 2*M_PI;
+            double x1min = 0;
+            double x1max = 2*M_PI;
+
+
+            pair<size_t, size_t> tmp;
+
+            std::size_t x0cells = (abs(x0min) + abs(x0max)) / this->dis;
+            std::size_t x1cells = (abs(x1min) + abs(x1max)) / this->dis;
+            unique_ptr<MyGridCSpace> ret = std::make_unique<MyGridCSpace>(this->dis, x0cells, x1cells, x0min, x0max, x1min, x1max);
+
+            vector<Obstacle2D> obs = env.obstacles;
+
+            Eigen::Vector2d tstPt;
+
+            return ret;
         }
+
+        double dis = 0.25;
 };
 
 class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
@@ -290,11 +310,6 @@ class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
         // You can have custom ctor params for all of these classes
         MyManipWFAlgo(const std::string& beep) 
             : amp::ManipulatorWaveFrontAlgorithm(std::make_shared<MyCSpaceCtor>()) {LOG("construcing... " << beep);}
-
-        // This is just to get grade to work, you DO NOT need to override this method
-        virtual amp::ManipulatorTrajectory2Link plan(const LinkManipulator2D& link_manipulator_agent, const amp::Problem2D& problem) override {
-            return amp::ManipulatorTrajectory2Link();
-        }
         
         // You need to implement here
         virtual amp::Path2D planInCSpace(const Eigen::Vector2d& q_init, const Eigen::Vector2d& q_goal, const amp::GridCSpace2D& grid_cspace) override {
@@ -569,9 +584,18 @@ int main(int argc, char** argv) {
     }
 
     // Exercise 2
-    if(false)
+    if(true)
     {
+        MyManipWFAlgo e2;
+        MyLinkManipulator man(vector<double>{1.0, 1.0});
+        
 
+        Problem2D p1 = HW6::getHW4Problem1();
+        Path2D p1p = e2.plan(man, p1);
+
+        Problem2D p2 = HW6::getHW4Problem2();
+
+        Problem2D p3 = HW6::getHW4Problem3();
     }
 
     // Exercise 3
@@ -587,6 +611,6 @@ int main(int argc, char** argv) {
         bool ex3PassD = HW6::checkGraphSearchResult(resD, ex3p, ex3h, true);
     }
 
-    amp::HW6::grade<MyPointWFAlgo, MyManipWFAlgo, MyAStarAlgo>("corey.huffman@colorado.edu", argc, argv, std::make_tuple(0.25), std::make_tuple(), std::make_tuple());
+    // amp::HW6::grade<MyPointWFAlgo, MyManipWFAlgo, MyAStarAlgo>("corey.huffman@colorado.edu", argc, argv, std::make_tuple(0.25), std::make_tuple(), std::make_tuple());
     return 0;
 }
