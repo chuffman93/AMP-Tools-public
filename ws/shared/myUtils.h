@@ -96,23 +96,26 @@ class myUtils {
             return count & 1;
         }
 
-        bool checkInObj(line arm, vector<Eigen::Vector2d> verts)
+        bool checkInObj(vector<line> arm, vector<Eigen::Vector2d> verts)
         {
             
             int count = 0;
             line v;
-            for(int wI = 0; wI < verts.size()-1; wI++)
+            for(auto al : arm)
             {
-                v.p1 = verts[wI];
-                v.p2 = verts[wI+1];
-                if(isInt(v,arm))
+                for(int wI = 0; wI < verts.size()-1; wI++)
                 {
-                    return true;
-                    // if(linDir(v.p1, p, v.p2) == 0)
-                    // {
-                    //     return onL(v, p);
-                    // } 
-                    // count++;
+                    v.p1 = verts[wI];
+                    v.p2 = verts[wI+1];
+                    if(isInt(v,al))
+                    {
+                        return true;
+                        // if(linDir(v.p1, p, v.p2) == 0)
+                        // {
+                        //     return onL(v, p);
+                        // } 
+                        // count++;
+                    }
                 }
             }
             return false;

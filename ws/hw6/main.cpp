@@ -278,10 +278,18 @@ class MyPointWFAlgo : public amp::PointWaveFrontAlgorithm {
 
 class MyCSpaceCtor : public amp::GridCSpace2DConstructor {
     public:
+        MyCSpaceCtor(){
+            dis = 0.25;
+        }
+
+        MyCSpaceCtor(double res){
+            dis = res;
+        }
+
         virtual std::unique_ptr<amp::GridCSpace2D> construct(const amp::LinkManipulator2D& manipulator, const amp::Environment2D& env) override { 
-            double x0min = 0;
+            double x0min = 0.0;
             double x0max = 2*M_PI;
-            double x1min = 0;
+            double x1min = 0.0;
             double x1max = 2*M_PI;
 
 
@@ -294,26 +302,243 @@ class MyCSpaceCtor : public amp::GridCSpace2DConstructor {
             vector<Obstacle2D> obs = env.obstacles;
 
             Eigen::Vector2d tstPt;
+            MyLinkManipulator::linkerState tmpSt;
+            vector<myUtils::line> links; 
+
+            int n = manipulator.nLinks();
+
+
+            for(double i = x0min; i < x0max; i+=(this->dis/3) )
+            {
+                for(double j = x1min; j < x1max; j+=(this->dis/3) )
+                {
+                    // printf("x0: %.2f x1: %.2f\n", i,j);
+                   
+                    tmp = ret->getCellFromPoint(i,j);
+                    if(ret->operator()(tmp.first, tmp.second))
+                    {
+                        continue;
+                    }          
+
+                    for(int k = 0; k < n; k++)
+                    {
+                        links.push_back(myUtils::line{manipulator.getJointLocation(Eigen::Vector2d{i,j},k),manipulator.getJointLocation(Eigen::Vector2d{i,j},k+1)});
+                    }
+                    for(int k = 0; k < obs.size(); k++)
+                    {
+                        // printf("Obj # %d\n", k);
+                        vector<Eigen::Vector2d> verts = obs[k].verticesCCW();
+                        verts.push_back(verts[0]); 
+                        if(hw6Utils.checkInObj(links, verts))
+                        {
+                            ret->operator()(tmp.first, tmp.second) = true;
+                            break;
+                        }
+                    }
+
+                    links.clear();
+                }
+            }  
 
             return ret;
         }
 
-        double dis = 0.25;
+        double dis;
 };
 
 class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
     public:
         // Default ctor
         MyManipWFAlgo()
-            : amp::ManipulatorWaveFrontAlgorithm(std::make_shared<MyCSpaceCtor>()) {}
+            : amp::ManipulatorWaveFrontAlgorithm(std::make_shared<MyCSpaceCtor>()) 
+            {
+
+            }
 
         // You can have custom ctor params for all of these classes
         MyManipWFAlgo(const std::string& beep) 
-            : amp::ManipulatorWaveFrontAlgorithm(std::make_shared<MyCSpaceCtor>()) {LOG("construcing... " << beep);}
+            : amp::ManipulatorWaveFrontAlgorithm(std::make_shared<MyCSpaceCtor>()) 
+            {
+                LOG("construcing... " << beep);
+            }
         
+        double dis = 0.25;
+
         // You need to implement here
         virtual amp::Path2D planInCSpace(const Eigen::Vector2d& q_init, const Eigen::Vector2d& q_goal, const amp::GridCSpace2D& grid_cspace) override {
-            return amp::Path2D();
+            Path2D ret;
+            
+            map< pair<size_t, size_t> , int > wave;
+
+            queue< pair<size_t,size_t> > tiles;
+
+            pair<size_t, size_t> tmp;
+
+            pair<size_t, size_t> stCell = grid_cspace.getCellFromPoint(q_init[0], q_init[1]);
+            pair<size_t, size_t> gCell  = grid_cspace.getCellFromPoint(q_goal[0], q_goal[1]);
+
+            pair<size_t, size_t> up; 
+            pair<size_t, size_t> down; 
+            pair<size_t, size_t> left; 
+            pair<size_t, size_t> right; 
+
+            pair<double,double> x0 = grid_cspace.x0Bounds();
+            pair<double,double> x1 = grid_cspace.x1Bounds();
+
+            int xMax = floor( (x0.second/this->dis)-(x0.first/this->dis) );
+            int yMax = floor( (x1.second/this->dis)-(x1.first/this->dis) );
+
+            bool found = false;
+
+            tiles.push(gCell);
+            wave.insert({gCell, 2});
+            ret.waypoints.push_back(q_init);
+            while(!tiles.empty())
+            {
+                tmp = tiles.front();
+                tiles.pop();
+
+                if(tmp.second == stCell.second && tmp.first == stCell.first)
+                {   
+                    found = true;
+                    break;
+                }
+
+                if(wave.find(tmp)->second == 1)
+                {
+                    continue;
+                }
+
+                up = make_pair(tmp.first, tmp.second+1);
+                down = make_pair(tmp.first, tmp.second-1);
+                left = make_pair(tmp.first-1, tmp.second);
+                right = make_pair(tmp.first+1, tmp.second);
+
+                if( (up.first >= 0 && up.first < xMax) 
+                &&  (up.second >= 0 && up.second < yMax) 
+                &&  wave.find(up) == wave.end())
+                {
+                    tiles.push(up);
+                    if(grid_cspace.operator()(up.first, up.second))
+                    {
+                        wave.insert({up, 1});
+                    }
+                    else if((wave.find(tmp)->second) > 1)
+                    {
+                        wave.insert({up, (wave.find(tmp)->second)+1});
+                    }
+                }
+
+                if( (down.first >= 0 && down.first < xMax) 
+                &&  (down.second >= 0 && down.second < yMax) 
+                &&  wave.find(down) == wave.end())
+                {
+                    tiles.push(down);
+                    if(grid_cspace.operator()(down.first, down.second))
+                    {
+                        wave.insert({down, 1});
+                    }
+                    else
+                    {
+                        wave.insert({down, (wave.find(tmp)->second)+1});
+                    }
+                }
+
+                if( (left.first >= 0 && left.first < xMax) 
+                &&  (left.second >= 0 && left.second < yMax) 
+                &&  wave.find(left) == wave.end())
+                {
+                    if(grid_cspace.operator()(left.first, left.second))
+                    {
+                        wave.insert({left, 1});
+                    }
+                    else
+                    {
+                        wave.insert({left, (wave.find(tmp)->second)+1});
+                    }
+                    tiles.push(left);
+                }
+
+                if( (right.first >= 0 && right.first < xMax) 
+                &&  (right.second >= 0 && right.second < yMax) 
+                &&  wave.find(right) == wave.end())
+                {
+                    if(grid_cspace.operator()(right.first, right.second))
+                    {
+                        wave.insert({right, 1});
+                    }
+                    else
+                    {
+                        wave.insert({right, (wave.find(tmp)->second)+1});
+                    }
+                    tiles.push(right);
+                }
+            }
+
+            int key = wave.find(stCell)->second;
+            tmp = stCell;
+
+            if(!found)
+            {
+                ret.waypoints.push_back(q_goal);
+                return ret;
+            }
+
+            while(true)
+            {
+                up = make_pair(tmp.first, tmp.second+1);
+                down = make_pair(tmp.first, tmp.second-1);
+                left = make_pair(tmp.first-1, tmp.second);
+                right = make_pair(tmp.first+1, tmp.second);
+
+                if(tmp.first == gCell.first && tmp.second == gCell.second)
+                {
+                    break;
+                }
+
+                if( (up.first >= 0 && up.first < xMax) 
+                &&  (up.second >= 0 && up.second < yMax)
+                && wave.find(up) != wave.end() && wave.find(up)->second == key-1)
+                {
+                    key = key-1;
+                    tmp = up;
+                    ret.waypoints.push_back(Eigen::Vector2d{ 
+                        ((x0.first+(this->dis*up.first)) + (x0.first+(this->dis*(up.first+1))))/2,
+                        ((x1.first+(this->dis*up.second)) + (x1.first+(this->dis*(up.second+1))))/2});
+                }
+                else if( (down.first >= 0 && down.first < xMax) 
+                &&  (down.second >= 0 && down.second < yMax)
+                && wave.find(down) != wave.end() && wave.find(down)->second == key-1)
+                {
+                    key = key-1;
+                    tmp = down;
+                    ret.waypoints.push_back(Eigen::Vector2d{ 
+                        ((x0.first+(this->dis*down.first)) + (x0.first+(this->dis*(down.first+1))))/2,
+                        ((x1.first+(this->dis*down.second)) + (x1.first+(this->dis*(down.second+1))))/2});
+                }
+                else if( (left.first >= 0 && left.first < xMax) 
+                &&  (left.second >= 0 && left.second < yMax)
+                && wave.find(left) != wave.end() && wave.find(left)->second == key-1)
+                {
+                    key = key-1;
+                    tmp = left;
+                    ret.waypoints.push_back(Eigen::Vector2d{ 
+                        ((x0.first+(this->dis*left.first)) + (x0.first+(this->dis*(left.first+1))))/2,
+                        ((x1.first+(this->dis*left.second)) + (x1.first+(this->dis*(left.second+1))))/2});
+                }
+                else if( (right.first >= 0 && right.first < xMax) 
+                &&  (right.second >= 0 && right.second < yMax)
+                && wave.find(right) != wave.end() && wave.find(right)->second == key-1)
+                {
+                    key = key-1;
+                    tmp = right;
+                    ret.waypoints.push_back(Eigen::Vector2d{ 
+                        ((x0.first+(this->dis*right.first)) + (x0.first+(this->dis*(right.first+1))))/2,
+                        ((x1.first+(this->dis*right.second)) + (x1.first+(this->dis*(right.second+1))))/2});
+                }
+            }
+            ret.waypoints.push_back(q_goal);
+            return ret;
         }
 };
 
@@ -588,14 +813,31 @@ int main(int argc, char** argv) {
     {
         MyManipWFAlgo e2;
         MyLinkManipulator man(vector<double>{1.0, 1.0});
+        MyCSpaceCtor csp;
         
 
         Problem2D p1 = HW6::getHW4Problem1();
-        Path2D p1p = e2.plan(man, p1);
+        GridCSpace2D * p1g = csp.construct(man,p1).release();
+        Path2D p1p = e2.plan(man,p1);
+        bool p1pass = HW6::checkLinkManipulatorPlan(p1p, man, p1, true);
+        Visualizer::makeFigure(*p1g, p1p);
+        Visualizer::makeFigure(p1,man,p1p);
 
         Problem2D p2 = HW6::getHW4Problem2();
+        GridCSpace2D * p2g = csp.construct(man,p2).release();
+        Path2D p2p = e2.plan(man,p2);
+        bool p2pass = HW6::checkLinkManipulatorPlan(p2p, man, p2, true);
+        Visualizer::makeFigure(p2, man, p2p);
+        Visualizer::makeFigure(*p2g,p2p);
 
         Problem2D p3 = HW6::getHW4Problem3();
+        GridCSpace2D * p3g = csp.construct(man,p3).release();
+        Path2D p3p = e2.plan(man,p3);
+        bool p3pass = HW6::checkLinkManipulatorPlan(p3p, man, p3, true);
+        Visualizer::makeFigure(p3, man, p3p);
+        Visualizer::makeFigure(*p3g, p3p);
+
+        Visualizer::showFigures();
     }
 
     // Exercise 3

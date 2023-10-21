@@ -44,7 +44,7 @@ MyLinkManipulator::linkerState MyLinkManipulator::FK(vector<double> lengths, Man
 MyLinkManipulator::linkerState MyLinkManipulator::IK(vector<double> lengths, Eigen::Vector2d target) const
 {
     int max_itr = 1000;
-    double err = 1e-12;
+    double err = 1e-24;
 
     bool solved = false;
 
@@ -62,12 +62,19 @@ MyLinkManipulator::linkerState MyLinkManipulator::IK(vector<double> lengths, Eig
     MyLinkManipulator::linkerState curr;
     MyLinkManipulator::linkerState ret;
 
-    ManipulatorState Ang;
+    curr.angles.resize(lengths.size());
+    ret.angles.resize(lengths.size());
 
+    
+
+    auto Ang = Eigen::VectorXd(lengths.size());
+
+    
     for(int i = 0; i < lengths.size(); i++)
     {
         Ang[i] = 0.1;
     }
+    
 
     Eigen::Vector2d base = this->getBaseLocation();
 
@@ -76,6 +83,7 @@ MyLinkManipulator::linkerState MyLinkManipulator::IK(vector<double> lengths, Eig
         for(int i = lengths.size()-1; i >= 0; i--)
         {
             curr = this->FK(lengths, Ang);
+
             endToTarget = target - Eigen::Vector2d{curr.jointPts.back().col(3)(0),curr.jointPts.back().col(3)(1)};
             errEndToTarget = sqrt(pow(endToTarget[0],2) + pow(endToTarget[1],2));
             if(errEndToTarget < err)
@@ -123,16 +131,24 @@ MyLinkManipulator::linkerState MyLinkManipulator::IK(vector<double> lengths, Eig
                 {
                     Ang[i] = (2.0*M_PI) + Ang[i];
                 }
+
             }
         }
         ret = curr;
         ret.angles = Ang;
         curr.angles = Ang;
-        // if(max_itr%20 == 0) printf("New angles are %.2f, %.2f, and %.2f\n", Ang[0]*180/M_PI, Ang[1]*180/M_PI, Ang[2]*180/M_PI);
+        // if(max_itr%20 == 0)
+        // {
+        //     printf("New angles are { ");
+        //     for(int i = 0; i < Ang.size(); i++)
+        //     {
+        //         printf("%.2f ", Ang[i]*180/M_PI);
+        //     }
+        //     printf("} \n");
+        // }
         max_itr -= 1; 
         if(solved)
         {
-
             break;
         }
     }
