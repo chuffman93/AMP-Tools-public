@@ -32,7 +32,7 @@ class MyGridCSpace : public amp::GridCSpace2D {
             }
 
         virtual std::pair<std::size_t, std::size_t> getCellFromPoint(double x0, double x1) const {
-            return make_pair(floor(x0/this->dis)-((this->xMin)/this->dis), floor(x1/this->dis)-((this->yMin)/this->dis));
+            return make_pair(floor( (x0 - this->xMin)/this->dis ), floor( (x1 - this->yMin)/this->dis ));
         }
         double dis;
         double xMin;
@@ -312,14 +312,15 @@ class MyCSpaceCtor : public amp::GridCSpace2DConstructor {
             {
                 for(double j = x1min; j < x1max; j+=(this->dis/3) )
                 {
-                    // printf("x0: %.2f x1: %.2f\n", i,j);
+                    printf("x0: %.2f x1: %.2f = ", i,j);
                    
                     tmp = ret->getCellFromPoint(i,j);
+                    printf("Cell {%ld, %ld} with max xCell = %ld max yCell = %ld\n",tmp.first, tmp.second, x0cells, x1cells);
                     if(ret->operator()(tmp.first, tmp.second))
                     {
                         continue;
                     }          
-
+                    printf("Getting Links\n");
                     for(int k = 0; k < n; k++)
                     {
                         links.push_back(myUtils::line{manipulator.getJointLocation(Eigen::Vector2d{i,j},k),manipulator.getJointLocation(Eigen::Vector2d{i,j},k+1)});
@@ -400,6 +401,7 @@ class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
                 tmp = tiles.front();
                 tiles.pop();
                 printf("Wave Front Build Cell {%ld, %ld}\n", tmp.first, tmp.second);
+
                 if(tmp.second == stCell.second && tmp.first == stCell.first)
                 {   
                     found = true;
@@ -411,16 +413,22 @@ class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
                     continue;
                 }
 
-                up = make_pair(tmp.first, (tmp.second+1)%(yMax-1));
-                down = make_pair(tmp.first, (tmp.second-1)%yMax);
-                left = make_pair((tmp.first-1)%xMax, tmp.second);
-                right = make_pair((tmp.first+1)%(xMax-1), tmp.second);
+                up = make_pair(tmp.first, (tmp.second+1)%(yMax));
+                down = make_pair(tmp.first, (tmp.second-1+yMax)%(yMax));
+                left = make_pair((tmp.first-1+xMax)%(xMax), tmp.second);
+                right = make_pair((tmp.first+1)%(xMax), tmp.second);
 
+                // printf("decre x : %ld, decre y : %ld\n", tmp.first-1, tmp.second-1);
+
+                // printf("Up Cell {%ld, %ld}\n", up.first, up.second);
+                // printf("Down Cell {%ld, %ld}\n", down.first, down.second);
+                // printf("Left Cell {%ld, %ld}\n", left.first, left.second);
+                // printf("Right Cell {%ld, %ld}\n", right.first, right.second);
                 
                 if( wave.find(up) == wave.end())
                 {
-                    printf("Up {%ld, %ld}\n" , up.first, up.second);
-                    
+                    // printf("Up {%ld, %ld}\n" , up.first, up.second);
+                    tiles.push(up);
                     if(grid_cspace.operator()(up.first, up.second))
                     {
                         wave.insert({up, 1});
@@ -428,14 +436,13 @@ class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
                     else if((wave.find(tmp)->second) > 1)
                     {
                         wave.insert({up, (wave.find(tmp)->second)+1});
-                        tiles.push(up);
                     }
                 }
 
                 if( wave.find(down) == wave.end())
                 {
-                    printf("down {%ld, %ld}\n" , down.first, down.second);
-                    
+                    // printf("down {%ld, %ld}\n" , down.first, down.second);
+                    tiles.push(down);
                     if(grid_cspace.operator()(down.first, down.second))
                     {
                         wave.insert({down, 1});
@@ -443,14 +450,13 @@ class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
                     else
                     {
                         wave.insert({down, (wave.find(tmp)->second)+1});
-                        tiles.push(down);
                     }
                 }
 
                 if( wave.find(left) == wave.end())
                 {
-                    printf("left {%ld, %ld}\n" , left.first, left.second);
-
+                    // printf("left {%ld, %ld}\n" , left.first, left.second);
+                    tiles.push(left);
                     if(grid_cspace.operator()(left.first, left.second))
                     {
                         wave.insert({left, 1});
@@ -458,14 +464,13 @@ class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
                     else
                     {
                         wave.insert({left, (wave.find(tmp)->second)+1});
-                        tiles.push(left);
                     }
                 }
 
                 if(  wave.find(right) == wave.end())
                 {
-                    printf("right {%ld, %ld}\n" , right.first, right.second);
-
+                    // printf("right {%ld, %ld}\n" , right.first, right.second);
+                    tiles.push(right);
                     if(grid_cspace.operator()(right.first, right.second))
                     {
                         wave.insert({right, 1});
@@ -473,7 +478,6 @@ class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
                     else
                     {
                         wave.insert({right, (wave.find(tmp)->second)+1});
-                        tiles.push(right);
                     }
                 }
             }
@@ -488,24 +492,23 @@ class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
                 return ret;
             }
 
-            printf("Going back to goal at Cell {%ld, %ld}  from Start Cell {%ld, %ld}\nxMax = %d, yMax = %d\n", gCell.first, gCell.second, stCell.first, stCell.second, xMax, yMax);
+            // printf("Going back to goal at Cell {%ld, %ld}  from Start Cell {%ld, %ld}\nxMax = %d, yMax = %d\n", gCell.first, gCell.second, stCell.first, stCell.second, xMax, yMax);
 
-            sleep(3);
+            // sleep(3);
             int move = 0;
             bool stepped = false;
             int ops = 0;
             while(true)
             {
                 printf("Checking Cell {%ld, %ld} value: %d\n", tmp.first, tmp.second, wave.find(tmp)->second);
-                up = make_pair(tmp.first, (tmp.second+1)%(yMax-1));
-                down = make_pair(tmp.first, (tmp.second-1)%yMax);
-                left = make_pair((tmp.first-1)%xMax, tmp.second);
-                right = make_pair((tmp.first+1)%(xMax-1), tmp.second);
-                printf("Up Cell {%ld, %ld} value: %d\n", up.first, up.second, wave.find(up)->second);
-                printf("Down Cell {%ld, %ld} value: %d\n", down.first, down.second, wave.find(down)->second);
-                printf("Left Cell {%ld, %ld} value: %d\n", left.first, left.second, wave.find(left)->second);
-                printf("Right Cell {%ld, %ld} value: %d\n", right.first, right.second, wave.find(right)->second);
-                sleep(1);
+                up = make_pair(tmp.first, (tmp.second+1)%(yMax));
+                down = make_pair(tmp.first, (tmp.second-1+yMax)%yMax);
+                left = make_pair((tmp.first-1+xMax)%xMax, tmp.second);
+                right = make_pair((tmp.first+1)%(xMax), tmp.second);
+                // printf("Up Cell {%ld, %ld} value: %d\n", up.first, up.second, wave.find(up)->second);
+                // printf("Down Cell {%ld, %ld} value: %d\n", down.first, down.second, wave.find(down)->second);
+                // printf("Left Cell {%ld, %ld} value: %d\n", left.first, left.second, wave.find(left)->second);
+                // printf("Right Cell {%ld, %ld} value: %d\n", right.first, right.second, wave.find(right)->second);
                 if(tmp.first == gCell.first && tmp.second == gCell.second)
                 {
                     ret.waypoints.push_back(q_goal);
@@ -555,108 +558,6 @@ class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
                         ((x0.first+(this->dis*right.first)) + (x0.first+(this->dis*(right.first+1))))/2,
                         ((x1.first+(this->dis*right.second)) + (x1.first+(this->dis*(right.second+1))))/2});
                     stepped = true;
-                }
-                else 
-                {
-                    // No Move, stuck, nack track and find new path forward
-                    printf("------NO MOVE SELECTED!!-------\n");
-                    if(stepped)
-                    {
-                        while(ops < 2)
-                        {
-                            ops = 0;
-                            tmp = grid_cspace.getCellFromPoint(ret.waypoints.back()[0],ret.waypoints.back()[1]);
-                            printf("Checking back Cell {%ld,%ld} value: %d at point (%.2f, %.2f)\n", tmp.first, tmp.second, wave.find(tmp)->second,ret.waypoints.back()[0],ret.waypoints.back()[1]);
-                            sleep(1);
-                            ret.waypoints.pop_back();
-
-
-                            up = make_pair(tmp.first, (tmp.second+1)%(yMax-1));
-                            down = make_pair(tmp.first, (tmp.second-1)%yMax);
-                            left = make_pair((tmp.first-1)%xMax, tmp.second);
-                            right = make_pair((tmp.first+1)%(xMax-1), tmp.second);
-
-                            int val_tmp = wave.find(tmp)->second;
-                            int val_up = wave.find(up)->second;
-                            int val_down = wave.find(down)->second;
-                            int val_left = wave.find(left)->second;
-                            int val_right = wave.find(right)->second;
-
-                            if(val_tmp-1 == val_up)
-                            {
-                                ops+=1;
-                                if(ops == 2)
-                                {
-                                    move = 1;
-                                }
-                            }
-
-                            if(val_tmp-1 == val_down)
-                            {
-                                ops+=1;
-                                if(ops == 2)
-                                {
-                                    move = 2;
-                                }
-                            }
-
-                            if(val_tmp-1 == val_left)
-                            {
-                                ops+=1;
-                                if(ops == 2)
-                                {
-                                    move = 3;
-                                }
-                            }
-
-                            if(val_tmp-1 == val_right)
-                            {
-                                ops+=1;
-                                if(ops == 2)
-                                {
-                                    move = 4;
-                                }
-                            }
-                            
-                        }   
-                        ops = 0;
-                        if(move == 1)
-                        {
-                            tmp = up;
-                            ret.waypoints.push_back(Eigen::Vector2d{ 
-                                ((x0.first+(this->dis*up.first)) + (x0.first+(this->dis*(up.first+1))))/2,
-                                ((x1.first+(this->dis*up.second)) + (x1.first+(this->dis*(up.second+1))))/2});
-                            key = wave.find(up)->second;
- 
-                        }
-                        else if(move == 2)
-                        {
-                            tmp = down;
-                            ret.waypoints.push_back(Eigen::Vector2d{ 
-                                ((x0.first+(this->dis*down.first)) + (x0.first+(this->dis*(down.first+1))))/2,
-                                ((x1.first+(this->dis*down.second)) + (x1.first+(this->dis*(down.second+1))))/2});
-                            key = wave.find(down)->second;
-
-                        }
-                        else if(move == 3)
-                        {
-                            tmp = left;
-                            ret.waypoints.push_back(Eigen::Vector2d{ 
-                                ((x0.first+(this->dis*left.first)) + (x0.first+(this->dis*(left.first+1))))/2,
-                                ((x1.first+(this->dis*left.second)) + (x1.first+(this->dis*(left.second+1))))/2});
-                            key = wave.find(left)->second;
-                        }
-                        else 
-                        {
-                            tmp = right;
-                            ret.waypoints.push_back(Eigen::Vector2d{ 
-                                ((x0.first+(this->dis*right.first)) + (x0.first+(this->dis*(right.first+1))))/2,
-                                ((x1.first+(this->dis*right.second)) + (x1.first+(this->dis*(right.second+1))))/2});
-                            key = wave.find(right)->second;
-                        }
-                        printf("Backed up to: {%ld, %ld} value: %d\n", tmp.first, tmp.second, wave.find(tmp)->second);
-                    }
-                    stepped = false;
                     
                 }
             }
@@ -976,6 +877,6 @@ int main(int argc, char** argv) {
         bool ex3PassD = HW6::checkGraphSearchResult(resD, ex3p, ex3h, true);
     }
 
-    // amp::HW6::grade<MyPointWFAlgo, MyManipWFAlgo, MyAStarAlgo>("corey.huffman@colorado.edu", argc, argv, std::make_tuple(0.25), std::make_tuple(), std::make_tuple());
+    amp::HW6::grade<MyPointWFAlgo, MyManipWFAlgo, MyAStarAlgo>("corey.huffman@colorado.edu", argc, argv, std::make_tuple(0.25), std::make_tuple(), std::make_tuple());
     return 0;
 }
