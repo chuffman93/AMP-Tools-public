@@ -24,6 +24,7 @@ Eigen::Matrix4d MyLinkManipulator::translate(double dx, double dy, double dz) co
 MyLinkManipulator::linkerState MyLinkManipulator::FK(vector<double> lengths, ManipulatorState angles) const
 {
     MyLinkManipulator::linkerState newState;
+    newState.angles.resize(lengths.size());
     newState.lengths = lengths;
     newState.angles = angles;
     newState.numLink = lengths.size();
@@ -43,8 +44,8 @@ MyLinkManipulator::linkerState MyLinkManipulator::FK(vector<double> lengths, Man
 
 MyLinkManipulator::linkerState MyLinkManipulator::IK(vector<double> lengths, Eigen::Vector2d target) const
 {
-    int max_itr = 1000;
-    double err = 1e-24;
+    int max_itr = 200000;
+    double err = 1e-6;
 
     bool solved = false;
 
@@ -72,7 +73,7 @@ MyLinkManipulator::linkerState MyLinkManipulator::IK(vector<double> lengths, Eig
     
     for(int i = 0; i < lengths.size(); i++)
     {
-        Ang[i] = 0.1;
+        Ang[i] = 0.0;
     }
     
 
@@ -89,6 +90,7 @@ MyLinkManipulator::linkerState MyLinkManipulator::IK(vector<double> lengths, Eig
             if(errEndToTarget < err)
             {
                 solved = true;
+                break;
             }
             else
             {
@@ -100,12 +102,12 @@ MyLinkManipulator::linkerState MyLinkManipulator::IK(vector<double> lengths, Eig
                 
                 endTargetMag = errCurrToEnd*currToTargetMag;
 
-                if(endTargetMag <= 0.0001)
-                {
-                    cosRotAng = 1.0;
-                    sinRotAng = 0.0;
-                }
-                else
+                // if(endTargetMag < 0.0001 || abs(endTargetMag-0.0001) < 1e-12 )
+                // {
+                //     cosRotAng = 1.0;
+                //     sinRotAng = 0.0;
+                // }
+                // else
                 {
                     // printf("target to End Magnitude: %.2f\n", endTargetMag);
                     // printf("currtoEnd (%.2f, %.2f) currtoTarget (%.2f, %.2f) \n", currToEnd[0], currToEnd[1], currtoTarget[0], currtoTarget[1]);
@@ -116,14 +118,23 @@ MyLinkManipulator::linkerState MyLinkManipulator::IK(vector<double> lengths, Eig
                 
                 rotAng = acos(max(-1.0, min(1.0,cosRotAng)));
 
+                // if(abs(rotAng) < 1e-5)
+                // {
+                //     printf("Moving slightly\n");
+                //     rotAng = 0.0001;
+                // }
+
                 if(sinRotAng < 0.0)
                 {
                     rotAng = -rotAng;
                 }
                 // printf("cosRotAng: %.2f, sinRotAng: %.2f, rotAng: %.2f\n", cosRotAng, sinRotAng, rotAng);
-                Ang[i] = Ang[i] + rotAng;
+                
 
-                if(Ang[i] >= 2.0*M_PI)
+                Ang[i] = Ang[i] + rotAng;
+                
+
+                if(Ang[i] > 2.0*M_PI || abs(Ang[i] - 2.0*M_PI) < err)
                 {
                     Ang[i] = Ang[i] -(2.0*M_PI);
                 }
@@ -161,7 +172,7 @@ Eigen::Vector2d MyLinkManipulator::getJointLocation(const ManipulatorState& stat
     vector<double> lens = this->getLinkLengths();
     MyLinkManipulator::linkerState links = this->FK(lens, state);
     Eigen::Vector2d base = this->getBaseLocation();
-    ret = base + Eigen::Vector2d{links.jointPts[joint_index].col(3)(0),links.jointPts[joint_index].col(3)(1)};
+    ret = Eigen::Vector2d{links.jointPts[joint_index].col(3)(0),links.jointPts[joint_index].col(3)(1)};
     // printf("Location of end point on final link: (%.3f, %.3f)\n",links.jointPts.back().col(3)(0),links.jointPts.back().col(3)(1));
     return ret;
 }
@@ -171,14 +182,21 @@ ManipulatorState MyLinkManipulator::getConfigurationFromIK(const Eigen::Vector2d
     ManipulatorState ret;
     vector<double> lens = this->getLinkLengths();
     MyLinkManipulator::linkerState links = this->IK(lens, end_effector_location);
-    // string output = "Configuration Angles are: ";
-    // char * tmp;
-    // for(int i = 0; i < lens.size(); i++)
-    // {
-    //     sprintf(tmp, " %.2f Degs ", links.angles[i]*180/M_PI);
-    //     output += tmp;
-    // }
-    // printf("%s\n", output.c_str());
+    string output = "Configuration Angles are: ";
+    
+    char * tmp;
+    printf("Returned Angles are { ");
+    for(int i = 0; i < links.angles.size(); i++)
+    {
+        printf(" %.2f ", links.angles[i]);
+        if(links.angles[i] < 0)
+        {
+            links.angles[i] += 2*M_PI;
+        }
+        
+    }
+    printf("}\n");
+    sleep(5);
     ret = (ManipulatorState)links.angles;
     return ret;
 }
