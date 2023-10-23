@@ -580,6 +580,17 @@ class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
             
             return ret;
         }
+
+        Eigen::Vector2d correctPosition(Eigen::Vector2d Ang)
+        {
+            Eigen::Vector2d ret;
+
+            double alph_p = M_PI - Ang[1];
+            double alph_m = M_PI + Ang[1];
+
+
+            return ret;
+        }
 };
 
 class MyAStarAlgo : public amp::AStar {
@@ -849,7 +860,7 @@ int main(int argc, char** argv) {
     }
 
     // Exercise 2
-    if(true)
+    if(false)
     {
         MyManipWFAlgo e2;
         MyLinkManipulator man(vector<double>{1.0, 1.0});
@@ -860,7 +871,7 @@ int main(int argc, char** argv) {
         Path2D p1p = e2.plan(man,p1);
         bool p1pass = HW6::checkLinkManipulatorPlan(p1p, man, p1, true);
         Visualizer::makeFigure(*p1g, p1p);
-        Visualizer::makeFigure(p1,man,p1p);
+        // Visualizer::makeFigure(p1,man,p1p);
 
         // Problem2D p2 = HW6::getHW4Problem2();
         // GridCSpace2D * p2g = csp.construct(man,p2).release();
@@ -882,7 +893,7 @@ int main(int argc, char** argv) {
         Path2D ptp = e2.plan(man,pt);
         bool ptpass = HW6::checkLinkManipulatorPlan(ptp, man, pt, true);
         Visualizer::makeFigure(*ptg, ptp);
-        Visualizer::makeFigure(pt,man,ptp);
+        // Visualizer::makeFigure(pt,man,ptp);
 
         Visualizer::showFigures();
     }
