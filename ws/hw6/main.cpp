@@ -279,7 +279,7 @@ class MyPointWFAlgo : public amp::PointWaveFrontAlgorithm {
 class MyCSpaceCtor : public amp::GridCSpace2DConstructor {
     public:
         MyCSpaceCtor(){
-            dis = 0.25;
+            dis = 0.01;
         }
 
         MyCSpaceCtor(double res){
@@ -295,8 +295,8 @@ class MyCSpaceCtor : public amp::GridCSpace2DConstructor {
 
             pair<size_t, size_t> tmp;
 
-            std::size_t x0cells = ((abs(x0min) + abs(x0max)) / this->dis);
-            std::size_t x1cells = ((abs(x1min) + abs(x1max)) / this->dis);
+            std::size_t x0cells = ceil((abs(x0min) + abs(x0max)) / this->dis);
+            std::size_t x1cells = ceil((abs(x1min) + abs(x1max)) / this->dis);
             unique_ptr<MyGridCSpace> ret = std::make_unique<MyGridCSpace>(this->dis, x0cells, x1cells, x0min, x0max, x1min, x1max);
 
             vector<Obstacle2D> obs = env.obstacles;
@@ -359,7 +359,7 @@ class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
                 LOG("construcing... " << beep);
             }
         
-        double dis = 0.25;
+        double dis = 0.01;
 
         // You need to implement here
         virtual amp::Path2D planInCSpace(const Eigen::Vector2d& q_init, const Eigen::Vector2d& q_goal, const amp::GridCSpace2D& grid_cspace) override {
@@ -527,6 +527,7 @@ class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
 
                 if(wave.find(tmp)->second == 2 || wave.find(tmp)->second == 1)
                 {
+                    ret.waypoints.pop_back();
                     ret.waypoints.push_back(goal);
                     break;
                 }
@@ -831,36 +832,38 @@ int main(int argc, char** argv) {
 
         amp::Problem2D ex1a = HW2::getWorkspace1();
         amp::GridCSpace2D * ex1g = ex1.constructDiscretizedWorkspace(ex1a).release();
-        Visualizer::makeFigure(*ex1g);
+        // Visualizer::makeFigure(*ex1g);
         Path2D ex1p = ex1.planInCSpace(ex1a.q_init, ex1a.q_goal, *ex1g);
         Visualizer::makeFigure(ex1a,ex1p);
+        printf("Length of Path for EX1 World 1: %.2f\n", ex1p.length());
         bool ex1aPass = HW6::checkPointAgentPlan(ex1p,ex1a,true);
 
         Problem2D ex1b = HW2::getWorkspace2();
         amp::GridCSpace2D * ex1gb = ex1.constructDiscretizedWorkspace(ex1b).release();
-        Visualizer::makeFigure(*ex1gb);
+        // Visualizer::makeFigure(*ex1gb);
         Path2D ex1pb = ex1.planInCSpace(ex1b.q_init, ex1b.q_goal, *ex1gb);
         Visualizer::makeFigure(ex1b,ex1pb);
+        printf("Length of Path for EX1 World 2: %.2f\n", ex1pb.length());
         bool ex1bPass = HW6::checkPointAgentPlan(ex1pb,ex1b,true);
 
-        const Random2DEnvironmentSpecification spec;
+        // const Random2DEnvironmentSpecification spec;
 
-        MyPointWFAlgo ex2;
-        Problem2D r1 =  EnvironmentTools::generateRandomPointAgentProblem(spec,0u);
-        amp::GridCSpace2D * r1g = ex2.constructDiscretizedWorkspace(r1).release();
-        Visualizer::makeFigure(*r1g);
-        Path2D r1p = ex2.planInCSpace(r1.q_init, r1.q_goal, *r1g);
-        Visualizer::makeFigure(r1,r1p);
-        bool r1pass = HW6::checkPointAgentPlan(r1p,r1,true);
+        // MyPointWFAlgo ex2;
+        // Problem2D r1 =  EnvironmentTools::generateRandomPointAgentProblem(spec,0u);
+        // amp::GridCSpace2D * r1g = ex2.constructDiscretizedWorkspace(r1).release();
+        // // Visualizer::makeFigure(*r1g);
+        // Path2D r1p = ex2.planInCSpace(r1.q_init, r1.q_goal, *r1g);
+        // Visualizer::makeFigure(r1,r1p);
+        // bool r1pass = HW6::checkPointAgentPlan(r1p,r1,true);
 
 
-        bool ex1CPass = HW6::generateAndCheck(ex2, true, 0U);
+        // bool ex1CPass = HW6::generateAndCheck(ex2, true, 0U);
 
         Visualizer::showFigures();
     }
 
     // Exercise 2
-    if(false)
+    if(true)
     {
         MyManipWFAlgo e2;
         MyLinkManipulator man(vector<double>{1.0, 1.0});
@@ -871,35 +874,35 @@ int main(int argc, char** argv) {
         Path2D p1p = e2.plan(man,p1);
         bool p1pass = HW6::checkLinkManipulatorPlan(p1p, man, p1, true);
         Visualizer::makeFigure(*p1g, p1p);
-        // Visualizer::makeFigure(p1,man,p1p);
+        Visualizer::makeFigure(p1,man,p1p);
 
-        // Problem2D p2 = HW6::getHW4Problem2();
-        // GridCSpace2D * p2g = csp.construct(man,p2).release();
-        // Path2D p2p = e2.plan(man,p2);
-        // bool p2pass = HW6::checkLinkManipulatorPlan(p2p, man, p2, true);
-        // Visualizer::makeFigure(p2, man, p2p);
-        // Visualizer::makeFigure(*p2g,p2p);
+        Problem2D p2 = HW6::getHW4Problem2();
+        GridCSpace2D * p2g = csp.construct(man,p2).release();
+        Path2D p2p = e2.plan(man,p2);
+        bool p2pass = HW6::checkLinkManipulatorPlan(p2p, man, p2, true);
+        Visualizer::makeFigure(p2, man, p2p);
+        Visualizer::makeFigure(*p2g,p2p);
 
-        // Problem2D p3 = HW6::getHW4Problem3();
-        // GridCSpace2D * p3g = csp.construct(man,p3).release();
-        // Path2D p3p = e2.plan(man,p3);
-        // bool p3pass = HW6::checkLinkManipulatorPlan(p3p, man, p3, true);
-        // Visualizer::makeFigure(p3, man, p3p);
-        // Visualizer::makeFigure(*p3g, p3p);
+        Problem2D p3 = HW6::getHW4Problem3();
+        GridCSpace2D * p3g = csp.construct(man,p3).release();
+        Path2D p3p = e2.plan(man,p3);
+        bool p3pass = HW6::checkLinkManipulatorPlan(p3p, man, p3, true);
+        Visualizer::makeFigure(p3, man, p3p);
+        Visualizer::makeFigure(*p3g, p3p);
 
-        const Random2DManipulatorEnvironmentSpecification Spec;
-        Problem2D pt = EnvironmentTools::generateRandomManipulatorProblem(Spec, man);
-        GridCSpace2D * ptg = csp.construct(man,pt).release();
-        Path2D ptp = e2.plan(man,pt);
-        bool ptpass = HW6::checkLinkManipulatorPlan(ptp, man, pt, true);
-        Visualizer::makeFigure(*ptg, ptp);
+        // const Random2DManipulatorEnvironmentSpecification Spec;
+        // Problem2D pt = EnvironmentTools::generateRandomManipulatorProblem(Spec, man);
+        // GridCSpace2D * ptg = csp.construct(man,pt).release();
+        // Path2D ptp = e2.plan(man,pt);
+        // bool ptpass = HW6::checkLinkManipulatorPlan(ptp, man, pt, true);
+        // Visualizer::makeFigure(*ptg, ptp);
         // Visualizer::makeFigure(pt,man,ptp);
 
         Visualizer::showFigures();
     }
 
     // Exercise 3
-    if(false)
+    if(true)
     {
         MyAStarAlgo ex3;
         amp::ShortestPathProblem ex3p = HW6::getEx3SPP();
@@ -911,6 +914,6 @@ int main(int argc, char** argv) {
         bool ex3PassD = HW6::checkGraphSearchResult(resD, ex3p, ex3h, true);
     }
 
-    amp::HW6::grade<MyPointWFAlgo, MyManipWFAlgo, MyAStarAlgo>("corey.huffman@colorado.edu", argc, argv, std::make_tuple(0.25), std::make_tuple("Use Mine Please"), std::make_tuple());
+    // amp::HW6::grade<MyPointWFAlgo, MyManipWFAlgo, MyAStarAlgo>("corey.huffman@colorado.edu", argc, argv, std::make_tuple(0.25), std::make_tuple("Use Mine Please"), std::make_tuple());
     return 0;
 }
