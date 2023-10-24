@@ -13,6 +13,8 @@ using namespace std;
 
 myUtils hw6Utils;
 
+double global_dis = 0.1;
+
 class MyGridCSpace : public amp::GridCSpace2D {
     public:
         //MyGridCSpace()
@@ -279,7 +281,7 @@ class MyPointWFAlgo : public amp::PointWaveFrontAlgorithm {
 class MyCSpaceCtor : public amp::GridCSpace2DConstructor {
     public:
         MyCSpaceCtor(){
-            dis = 0.01;
+            dis = global_dis;
         }
 
         MyCSpaceCtor(double res){
@@ -295,47 +297,85 @@ class MyCSpaceCtor : public amp::GridCSpace2DConstructor {
 
             pair<size_t, size_t> tmp;
 
-            std::size_t x0cells = ceil((abs(x0min) + abs(x0max)) / this->dis);
-            std::size_t x1cells = ceil((abs(x1min) + abs(x1max)) / this->dis);
-            unique_ptr<MyGridCSpace> ret = std::make_unique<MyGridCSpace>(this->dis, x0cells, x1cells, x0min, x0max, x1min, x1max);
-
             vector<Obstacle2D> obs = env.obstacles;
-
-            Eigen::Vector2d tstPt;
-            MyLinkManipulator::linkerState tmpSt;
+            int n = manipulator.nLinks();
+            std::size_t x0cells = ((abs(x0min) + abs(x0max)) / this->dis);
+            std::size_t x1cells = ((abs(x1min) + abs(x1max)) / this->dis);
+            unique_ptr<MyGridCSpace> ret = std::make_unique<MyGridCSpace>(this->dis, x0cells, x1cells, x0min, x0max, x1min, x1max);
             vector<myUtils::line> links; 
 
-            int n = manipulator.nLinks();
-
-
-            for(double i = x0min; i < x0max; i+=(this->dis/3) )
+            try 
             {
-                for(double j = x1min; j < x1max; j+=(this->dis/3) )
-                {
-                   
-                    tmp = ret->getCellFromPoint(i,j);
-                    if(ret->operator()(tmp.first, tmp.second))
-                    {
-                        continue;
-                    }          
-                    for(int k = 0; k < n; k++)
-                    {
-                        links.push_back(myUtils::line{manipulator.getJointLocation(Eigen::Vector2d{i,j},k),manipulator.getJointLocation(Eigen::Vector2d{i,j},k+1)});
-                    }
-                    for(int k = 0; k < obs.size(); k++)
-                    {
-                        vector<Eigen::Vector2d> verts = obs[k].verticesCCW();
-                        verts.push_back(verts[0]); 
-                        if(hw6Utils.checkInObj(links, verts))
-                        {
-                            ret->operator()(tmp.first, tmp.second) = true;
-                            break;
-                        }
-                    }
+                x0cells = ((abs(x0min) + abs(x0max)) / this->dis);
+                x1cells = ((abs(x1min) + abs(x1max)) / this->dis);
+                ret = std::make_unique<MyGridCSpace>(this->dis, x0cells, x1cells, x0min, x0max, x1min, x1max);
+                links.clear(); 
 
-                    links.clear();
+                for(double i = x0min; i < x0max; i+=(this->dis/3) )
+                {
+                    for(double j = x1min; j < x1max; j+=(this->dis/3) )
+                    {
+                    
+                        tmp = ret->getCellFromPoint(i,j);
+                        if(ret->operator()(tmp.first, tmp.second))
+                        {
+                            continue;
+                        }          
+                        for(int k = 0; k < n; k++)
+                        {
+                            links.push_back(myUtils::line{manipulator.getJointLocation(Eigen::Vector2d{i,j},k),manipulator.getJointLocation(Eigen::Vector2d{i,j},k+1)});
+                        }
+                        for(int k = 0; k < obs.size(); k++)
+                        {
+                            vector<Eigen::Vector2d> verts = obs[k].verticesCCW();
+                            verts.push_back(verts[0]); 
+                            if(hw6Utils.checkInObj(links, verts))
+                            {
+                                ret->operator()(tmp.first, tmp.second) = true;
+                                break;
+                            }
+                        }
+
+                        links.clear();
+                    }
                 }
-            }  
+            }
+            catch(...)
+            {
+                x0cells = ceil((abs(x0min) + abs(x0max)) / this->dis);
+                x1cells = ceil((abs(x1min) + abs(x1max)) / this->dis);
+                ret = std::make_unique<MyGridCSpace>(this->dis, x0cells, x1cells, x0min, x0max, x1min, x1max);
+                links.clear(); 
+
+                for(double i = x0min; i < x0max; i+=(this->dis/3) )
+                {
+                    for(double j = x1min; j < x1max; j+=(this->dis/3) )
+                    {
+                    
+                        tmp = ret->getCellFromPoint(i,j);
+                        if(ret->operator()(tmp.first, tmp.second))
+                        {
+                            continue;
+                        }          
+                        for(int k = 0; k < n; k++)
+                        {
+                            links.push_back(myUtils::line{manipulator.getJointLocation(Eigen::Vector2d{i,j},k),manipulator.getJointLocation(Eigen::Vector2d{i,j},k+1)});
+                        }
+                        for(int k = 0; k < obs.size(); k++)
+                        {
+                            vector<Eigen::Vector2d> verts = obs[k].verticesCCW();
+                            verts.push_back(verts[0]); 
+                            if(hw6Utils.checkInObj(links, verts))
+                            {
+                                ret->operator()(tmp.first, tmp.second) = true;
+                                break;
+                            }
+                        }
+
+                        links.clear();
+                    }
+                }
+            } 
 
             return ret;
         }
@@ -349,17 +389,37 @@ class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
         MyManipWFAlgo()
             : amp::ManipulatorWaveFrontAlgorithm(std::make_shared<MyCSpaceCtor>()) 
             {
-
+                myLinkAngent = MyLinkManipulator(vector<double>{1.0, 1.0});
             }
 
         // You can have custom ctor params for all of these classes
-        MyManipWFAlgo(const std::string& beep) 
+        MyManipWFAlgo(MyLinkManipulator Link_Agent) 
             : amp::ManipulatorWaveFrontAlgorithm(std::make_shared<MyCSpaceCtor>()) 
             {
-                LOG("construcing... " << beep);
+                myLinkAngent = Link_Agent;
             }
         
-        double dis = 0.01;
+        double dis = global_dis;
+
+        MyLinkManipulator myLinkAngent;
+
+        virtual amp::ManipulatorTrajectory2Link plan(const LinkManipulator2D& link_manipulator_agent, const amp::Problem2D& problem) override {
+            ASSERT(link_manipulator_agent.nLinks() == 2, "Manipulator must have two links");
+
+            // Get the initial state from IK
+            amp::ManipulatorState init_state = link_manipulator_agent.getConfigurationFromIK(problem.q_init);
+
+            // Get the goal state from IK
+            amp::ManipulatorState goal_state = link_manipulator_agent.getConfigurationFromIK(problem.q_goal);
+
+            // Construct the grid cspace
+            std::unique_ptr<amp::GridCSpace2D> grid_cspace = m_c_space_constructor->construct(link_manipulator_agent, problem);
+
+            // Now that we have everything, we can call method to plan in C-space using the WaveFront algorithm
+            // Note, we can use the `convert` overloads to easily go between ManipulatorState and ManipulatorState2Link
+            return planInCSpace(convert(init_state), convert(goal_state), *grid_cspace);
+        }
+
 
         // You need to implement here
         virtual amp::Path2D planInCSpace(const Eigen::Vector2d& q_init, const Eigen::Vector2d& q_goal, const amp::GridCSpace2D& grid_cspace) override {
@@ -374,15 +434,11 @@ class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
             Eigen::Vector2d goal = q_goal;
             Eigen::Vector2d init = q_init;
 
-            if(goal[0] < 0)
-            {
-                goal[0] = goal[0] + 2*M_PI;
-            }
+            // printf("------- RECEIVED -------\n");
+            // printf("Goal Point is at angle: (%.3f & %.3f)\n",goal[0]*180/M_PI, goal[1]*180/M_PI);
+            // printf("Start Point is at angle: (%.3f & %.3f)\n",init[0]*180/M_PI, init[1]*180/M_PI);
 
-            if(goal[1] < 0)
-            {
-                goal[1] = goal[1] + 2*M_PI;
-            }
+            // sleep(5);
 
             if(init[0] < 0)
             {
@@ -394,12 +450,45 @@ class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
                 init[1] = init[1] + 2*M_PI;
             }
 
+            if(goal[0] < 0)
+            {
+                goal[0] = goal[0] + 2*M_PI;
+            }
 
-            // printf("Goal Point is at angle: (%.3f & %.3f)\n",goal[0]*180/M_PI, goal[1]*180/M_PI);
-            // sleep(5);
+            if(goal[1] < 0)
+            {
+                goal[1] = goal[1] + 2*M_PI;
+            }
 
             pair<size_t, size_t> stCell = grid_cspace.getCellFromPoint(init[0], init[1]);
             pair<size_t, size_t> gCell  = grid_cspace.getCellFromPoint(goal[0], goal[1]);
+
+
+            if(grid_cspace.operator()(gCell.first, gCell.second))
+            {
+                // printf("Correcting goal!!\n");
+                goal = correctPosition(goal);
+                gCell  = grid_cspace.getCellFromPoint(goal[0], goal[1]);
+            }
+
+            if(grid_cspace.operator()(stCell.first, stCell.second))
+            {
+                // printf("Correcting start!!\n");
+                init = correctPosition(init);
+                stCell = grid_cspace.getCellFromPoint(init[0], init[1]);
+            }
+
+            // printf("------- ADJUSTED -------\n");
+            // printf("Goal Point is at angle: (%.3f & %.3f)\n",goal[0]*180/M_PI, goal[1]*180/M_PI);
+            // printf("Start Point is at angle: (%.3f & %.3f)\n",init[0]*180/M_PI, init[1]*180/M_PI);
+
+            if(grid_cspace.operator()(stCell.first, stCell.second) || grid_cspace.operator()(gCell.first, gCell.second))
+            {
+                printf("No proper start and/or finish... \n");
+                ret.waypoints.push_back(init);
+                ret.waypoints.push_back(goal);
+                return ret;
+            }   
 
             pair<size_t, size_t> up; 
             pair<size_t, size_t> down; 
@@ -419,6 +508,7 @@ class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
             tiles.push(gCell);
             wave.insert({gCell, 2});
             ret.waypoints.push_back(init);
+            // printf("Searching for Start Cell {%ld, %ld} from Goal Cell {%ld, %ld} xMax = %d, yMax %d\n", stCell.first, stCell.second, gCell.first, gCell.second, xMax, yMax);
             while(!tiles.empty())
             {
                 
@@ -433,22 +523,29 @@ class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
 
                 if(wave.find(tmp)->second == 1)
                 {
+                    // if(tmp.first == 36 && tmp.second == 16)
+                    // {
+                    //     printf("----Building from Cell {%ld, %ld}----\n", tmp.first, tmp.second);
+                    //     printf("-Up Cell {%ld, %ld}-\n", up.first, up.second);
+                    //     printf("-Down Cell {%ld, %ld}-\n", down.first, down.second);
+                    //     printf("-Left Cell {%ld, %ld}-\n", left.first, left.second);
+                    //     printf("-Right Cell {%ld, %ld}-\n", right.first, right.second);
+                    // }
                     continue;
                 }
-
-
-                // printf("----Building from Cell {%ld, %ld}----\n", tmp.first, tmp.second);
 
                 up = make_pair(tmp.first, (tmp.second+1)%(yMax));
                 down = make_pair(tmp.first, (tmp.second-1+yMax)%(yMax));
                 left = make_pair((tmp.first-1+xMax)%(xMax), tmp.second);
                 right = make_pair((tmp.first+1)%(xMax), tmp.second);
-
-                // printf("-Up Cell {%ld, %ld}-\n", up.first, up.second);
-                // printf("-Down Cell {%ld, %ld}-\n", down.first, down.second);
-                // printf("-Left Cell {%ld, %ld}-\n", left.first, left.second);
-                // printf("-Right Cell {%ld, %ld}-\n", right.first, right.second);
-
+                // if(tmp.first == 36 && tmp.second == 16)
+                // {
+                //     printf("----Building from Cell {%ld, %ld}----\n", tmp.first, tmp.second);
+                //     printf("-Up Cell {%ld, %ld}-\n", up.first, up.second);
+                //     printf("-Down Cell {%ld, %ld}-\n", down.first, down.second);
+                //     printf("-Left Cell {%ld, %ld}-\n", left.first, left.second);
+                //     printf("-Right Cell {%ld, %ld}-\n", right.first, right.second);
+                // }
                 if( wave.find(up) == wave.end())
                 {
                     tiles.push(up);
@@ -516,66 +613,87 @@ class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
             bool stepped = false;
             int ops = 0;
             // printf("Working way back to goal {%ld, %ld} from start {%ld, %ld}\n",gCell.first, gCell.second, stCell.first, stCell.second);
-            // sleep(5);
             while(true)
             {
-                // printf("Checking Cell {%ld, %ld} with value: %d\n", tmp.first, tmp.second, wave.find(tmp)->second);
+                
                 up = make_pair(tmp.first, (tmp.second+1)%(yMax));
                 down = make_pair(tmp.first, (tmp.second-1+yMax)%yMax);
                 left = make_pair((tmp.first-1+xMax)%xMax, tmp.second);
                 right = make_pair((tmp.first+1)%(xMax), tmp.second);
-
-                if(wave.find(tmp)->second == 2 || wave.find(tmp)->second == 1)
-                {
-                    ret.waypoints.pop_back();
-                    ret.waypoints.push_back(goal);
-                    break;
-                }
-
-                if( (up.first >= 0 && up.first < xMax) 
-                &&  (up.second >= 0 && up.second < yMax)
-                && wave.find(up) != wave.end() && wave.find(up)->second == key-1 )
+                // if(key < 4 || key > wave.find(stCell)->second-3)
+                // {
+                //     printf("----Checking Cell {%ld, %ld} with value: %d----\n", tmp.first, tmp.second, wave.find(tmp)->second);
+                //     printf("up Cell {%ld, %ld} with value: %d\n", up.first, up.second, wave.find(up)->second);
+                //     printf("down Cell {%ld, %ld} with value: %d\n", down.first, down.second, wave.find(down)->second);
+                //     printf("left Cell {%ld, %ld} with value: %d\n", left.first, left.second, wave.find(left)->second);
+                //     printf("right Cell {%ld, %ld} with value: %d\n", right.first, right.second, wave.find(right)->second);
+                // }
+            
+                if( wave.find(up) != wave.end() && wave.find(up)->second == key-1 )
                 {
                     key = key-1;
                     tmp = up;
+                    if(wave.find(tmp)->second == 2)
+                    {
+                        ret.waypoints.push_back(goal);
+                        break;
+                    }
                     ret.waypoints.push_back(Eigen::Vector2d{ 
                         ((x0.first+(this->dis*up.first)) + (x0.first+(this->dis*(up.first+1))))/2,
                         ((x1.first+(this->dis*up.second)) + (x1.first+(this->dis*(up.second+1))))/2});
                     stepped = true;
                 }
-                else if( (down.first >= 0 && down.first < xMax) 
-                &&  (down.second >= 0 && down.second < yMax)
-                && wave.find(down) != wave.end() && wave.find(down)->second == key-1 )
+                else if( wave.find(down) != wave.end() && wave.find(down)->second == key-1 )
                 {
                     key = key-1;
                     tmp = down;
+                    if(wave.find(tmp)->second == 2)
+                    {
+                        ret.waypoints.push_back(goal);
+                        break;
+                    }
                     ret.waypoints.push_back(Eigen::Vector2d{ 
                         ((x0.first+(this->dis*down.first)) + (x0.first+(this->dis*(down.first+1))))/2,
                         ((x1.first+(this->dis*down.second)) + (x1.first+(this->dis*(down.second+1))))/2});
                     stepped = true;
                 }
-                else if( (left.first >= 0 && left.first < xMax) 
-                &&  (left.second >= 0 && left.second < yMax)
-                && wave.find(left) != wave.end() && wave.find(left)->second == key-1 )
+                else if( wave.find(left) != wave.end() && wave.find(left)->second == key-1 )
                 {
                     key = key-1;
                     tmp = left;
+                    if(wave.find(tmp)->second == 2)
+                    {
+                        ret.waypoints.push_back(goal);
+                        break;
+                    }
                     ret.waypoints.push_back(Eigen::Vector2d{ 
                         ((x0.first+(this->dis*left.first)) + (x0.first+(this->dis*(left.first+1))))/2,
                         ((x1.first+(this->dis*left.second)) + (x1.first+(this->dis*(left.second+1))))/2});
                     stepped = true;
                 }
-                else if( (right.first >= 0 && right.first < xMax) 
-                &&  (right.second >= 0 && right.second < yMax)
-                && wave.find(right) != wave.end() && wave.find(right)->second == key-1 )
+                else if( wave.find(right) != wave.end() && wave.find(right)->second == key-1 )
                 {
                     key = key-1;
                     tmp = right;
+                    if(wave.find(tmp)->second == 2)
+                    {
+                        ret.waypoints.push_back(goal);
+                        break;
+                    }
                     ret.waypoints.push_back(Eigen::Vector2d{ 
                         ((x0.first+(this->dis*right.first)) + (x0.first+(this->dis*(right.first+1))))/2,
                         ((x1.first+(this->dis*right.second)) + (x1.first+(this->dis*(right.second+1))))/2});
                     stepped = true;
                     
+                }
+                else
+                {
+                    stepped = false;
+                }
+                if(wave.find(tmp)->second == 1 || !stepped)
+                {
+                    ret.waypoints.push_back(goal);
+                    break;
                 }
             }
             
@@ -585,11 +703,22 @@ class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
         Eigen::Vector2d correctPosition(Eigen::Vector2d Ang)
         {
             Eigen::Vector2d ret;
+            double atanxy;
+            atanxy = Ang[0] + atan2( sin(Ang[1]),(1+cos(Ang[1])) );
+            ret[1] = -Ang[1] + 2*M_PI;
+            ret[0] = atanxy + atan2( sin(Ang[1]-2*M_PI),(1+cos(Ang[1]-2*M_PI)) );
 
-            double alph_p = M_PI - Ang[1];
-            double alph_m = M_PI + Ang[1];
-
-
+            for(int i = 0; i < ret.size(); i++)
+            {
+                if(ret[i] > 2.0*M_PI || abs(ret[i] - 2.0*M_PI) < 1e-4)
+                {
+                    ret[i] = ret[i] - (2.0*M_PI);
+                }
+                else if(ret[i] < 0.0)
+                {
+                    ret[i] = (2.0*M_PI) + ret[i];
+                }
+            }
             return ret;
         }
 };
@@ -863,7 +992,7 @@ int main(int argc, char** argv) {
     }
 
     // Exercise 2
-    if(true)
+    if(false)
     {
         MyManipWFAlgo e2;
         MyLinkManipulator man(vector<double>{1.0, 1.0});
@@ -873,36 +1002,65 @@ int main(int argc, char** argv) {
         GridCSpace2D * p1g = csp.construct(man,p1).release();
         Path2D p1p = e2.plan(man,p1);
         bool p1pass = HW6::checkLinkManipulatorPlan(p1p, man, p1, true);
+        // Visualizer::makeFigure(p1,man,p1p);
         Visualizer::makeFigure(*p1g, p1p);
-        Visualizer::makeFigure(p1,man,p1p);
 
         Problem2D p2 = HW6::getHW4Problem2();
         GridCSpace2D * p2g = csp.construct(man,p2).release();
         Path2D p2p = e2.plan(man,p2);
         bool p2pass = HW6::checkLinkManipulatorPlan(p2p, man, p2, true);
-        Visualizer::makeFigure(p2, man, p2p);
+        // Visualizer::makeFigure(p2, man, p2p);
         Visualizer::makeFigure(*p2g,p2p);
 
         Problem2D p3 = HW6::getHW4Problem3();
         GridCSpace2D * p3g = csp.construct(man,p3).release();
         Path2D p3p = e2.plan(man,p3);
         bool p3pass = HW6::checkLinkManipulatorPlan(p3p, man, p3, true);
-        Visualizer::makeFigure(p3, man, p3p);
+        // Visualizer::makeFigure(p3, man, p3p);
         Visualizer::makeFigure(*p3g, p3p);
 
-        // const Random2DManipulatorEnvironmentSpecification Spec;
-        // Problem2D pt = EnvironmentTools::generateRandomManipulatorProblem(Spec, man);
-        // GridCSpace2D * ptg = csp.construct(man,pt).release();
-        // Path2D ptp = e2.plan(man,pt);
-        // bool ptpass = HW6::checkLinkManipulatorPlan(ptp, man, pt, true);
-        // Visualizer::makeFigure(*ptg, ptp);
+        const Random2DManipulatorEnvironmentSpecification Spec;
+        Problem2D pt = EnvironmentTools::generateRandomManipulatorProblem(Spec, man);
+        GridCSpace2D * ptg = csp.construct(man,pt).release();
+        Path2D ptp = e2.plan(man,pt);
+        bool ptpass = HW6::checkLinkManipulatorPlan(ptp, man, pt, true);
+        Visualizer::makeFigure(*ptg, ptp);
         // Visualizer::makeFigure(pt,man,ptp);
+
+        pt = EnvironmentTools::generateRandomManipulatorProblem(Spec, man);
+        ptg = csp.construct(man,pt).release();
+        ptp = e2.plan(man,pt);
+        ptpass = HW6::checkLinkManipulatorPlan(ptp, man, pt, true);
+        Visualizer::makeFigure(*ptg, ptp);
+        // Visualizer::makeFigure(pt,man,ptp);
+
+        pt = EnvironmentTools::generateRandomManipulatorProblem(Spec, man);
+        ptg = csp.construct(man,pt).release();
+        ptp = e2.plan(man,pt);
+        ptpass = HW6::checkLinkManipulatorPlan(ptp, man, pt, true);
+        Visualizer::makeFigure(*ptg, ptp);
+        // Visualizer::makeFigure(pt,man,ptp);
+
+        pt = EnvironmentTools::generateRandomManipulatorProblem(Spec, man);
+        ptg = csp.construct(man,pt).release();
+        ptp = e2.plan(man,pt);
+        ptpass = HW6::checkLinkManipulatorPlan(ptp, man, pt, true);
+        Visualizer::makeFigure(*ptg, ptp);
+        // Visualizer::makeFigure(pt,man,ptp);
+
+        pt = EnvironmentTools::generateRandomManipulatorProblem(Spec, man);
+        ptg = csp.construct(man,pt).release();
+        ptp = e2.plan(man,pt);
+        ptpass = HW6::checkLinkManipulatorPlan(ptp, man, pt, true);
+        Visualizer::makeFigure(*ptg, ptp);
+        // Visualizer::makeFigure(pt,man,ptp);
+
 
         Visualizer::showFigures();
     }
 
     // Exercise 3
-    if(true)
+    if(false)
     {
         MyAStarAlgo ex3;
         amp::ShortestPathProblem ex3p = HW6::getEx3SPP();
@@ -914,6 +1072,6 @@ int main(int argc, char** argv) {
         bool ex3PassD = HW6::checkGraphSearchResult(resD, ex3p, ex3h, true);
     }
 
-    // amp::HW6::grade<MyPointWFAlgo, MyManipWFAlgo, MyAStarAlgo>("corey.huffman@colorado.edu", argc, argv, std::make_tuple(0.25), std::make_tuple("Use Mine Please"), std::make_tuple());
+    amp::HW6::grade<MyPointWFAlgo, MyManipWFAlgo, MyAStarAlgo>("corey.huffman@colorado.edu", argc, argv, std::make_tuple(0.25), std::make_tuple(), std::make_tuple());
     return 0;
 }

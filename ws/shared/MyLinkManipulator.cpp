@@ -44,8 +44,8 @@ MyLinkManipulator::linkerState MyLinkManipulator::FK(vector<double> lengths, Man
 
 MyLinkManipulator::linkerState MyLinkManipulator::IK(vector<double> lengths, Eigen::Vector2d target) const
 {
-    int max_itr = 200000;
-    double err = 1e-6;
+    int max_itr = 1e6;
+    double err = 1e-5;
 
     bool solved = false;
 
@@ -66,11 +66,8 @@ MyLinkManipulator::linkerState MyLinkManipulator::IK(vector<double> lengths, Eig
     curr.angles.resize(lengths.size());
     ret.angles.resize(lengths.size());
 
-    
-
     auto Ang = Eigen::VectorXd(lengths.size());
 
-    
     for(int i = 0; i < lengths.size(); i++)
     {
         Ang[i] = 0.0;
@@ -102,7 +99,7 @@ MyLinkManipulator::linkerState MyLinkManipulator::IK(vector<double> lengths, Eig
                 
                 endTargetMag = errCurrToEnd*currToTargetMag;
 
-                // if(endTargetMag < 0.0001 || abs(endTargetMag-0.0001) < 1e-12 )
+                // if(endTargetMag < 0.000001 || abs(endTargetMag-0.000001) < 1e-12 )
                 // {
                 //     cosRotAng = 1.0;
                 //     sinRotAng = 0.0;
@@ -138,7 +135,7 @@ MyLinkManipulator::linkerState MyLinkManipulator::IK(vector<double> lengths, Eig
                 {
                     Ang[i] = Ang[i] -(2.0*M_PI);
                 }
-                if(Ang[i] < 0.0)
+                else if(Ang[i] < 0.0)
                 {
                     Ang[i] = (2.0*M_PI) + Ang[i];
                 }
@@ -163,6 +160,7 @@ MyLinkManipulator::linkerState MyLinkManipulator::IK(vector<double> lengths, Eig
             break;
         }
     }
+    
     return ret;
 }
 
@@ -185,18 +183,18 @@ ManipulatorState MyLinkManipulator::getConfigurationFromIK(const Eigen::Vector2d
     string output = "Configuration Angles are: ";
     
     char * tmp;
-    printf("Returned Angles are { ");
-    for(int i = 0; i < links.angles.size(); i++)
-    {
-        printf(" %.2f ", links.angles[i]);
-        if(links.angles[i] < 0)
-        {
-            links.angles[i] += 2*M_PI;
-        }
+    // printf("Returned Angles are { ");
+    // for(int i = 0; i < links.angles.size(); i++)
+    // {
+    //     printf(" %.2f ", links.angles[i]);
+    //     if(links.angles[i] < 0)
+    //     {
+    //         links.angles[i] += 2*M_PI;
+    //     }
         
-    }
-    printf("}\n");
-    sleep(5);
+    // }
+    // printf("}\n");
+    // sleep(5);
     ret = (ManipulatorState)links.angles;
     return ret;
 }
