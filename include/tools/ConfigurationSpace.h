@@ -6,18 +6,22 @@
 
 namespace amp {
 
-    /// @brief User implemented abstract class that accesses the continuous C-Space (bounded)
-    class ConfigurationSpace2D {
-        public:
-            /// @brief Constructor
-            /// @param x0_min Lower bound on first configuration dimension
-            /// @param x0_max Upper bound on first configuration dimension
-            /// @param x1_min Lower bound on second configuration dimension
-            /// @param x1_max Upper bound on second configuration dimension
-            ConfigurationSpace2D(double x0_min, double x0_max, double x1_min, double x1_max)
-                : m_x0_bounds(x0_min, x0_max)
-                , m_x1_bounds(x1_min, x1_max)
-                {}
+class ConfigurationSpace {
+    
+};
+
+/// @brief User implemented abstract class that accesses the continuous C-Space (bounded)
+class ConfigurationSpace2D {
+    public:
+        /// @brief Constructor
+        /// @param x0_min Lower bound on first configuration dimension
+        /// @param x0_max Upper bound on first configuration dimension
+        /// @param x1_min Lower bound on second configuration dimension
+        /// @param x1_max Upper bound on second configuration dimension
+        ConfigurationSpace2D(double x0_min, double x0_max, double x1_min, double x1_max)
+            : m_x0_bounds(x0_min, x0_max)
+            , m_x1_bounds(x1_min, x1_max)
+            {}
 
             /******* User Implemented Methods ********/
 
