@@ -1,26 +1,5 @@
 #include "MyBug1Algorithm.h" 
 
-// bool operator==(Eigen::Vector2d a, Eigen::Vector2d b)
-// {
-//     if(((abs(a[0] - b[0]) < 1e-4) && (abs(a[1] - b[1]) < 1e-4)))
-//     {
-//         return true;
-//     }   
-//     return false;
-// }
-
-// double round(double a)
-// {
-//     double ret;
-//     char buff[40];
-
-//     sprintf(buff,"%.2f",a);
-
-//     sscanf(buff,"%lf",&ret);
-
-//     return ret;
-// }
-
 // Implement your methods in the `.cpp` file, for example:
 amp::Path2D MyBug1Algorithm::plan(const amp::Problem2D& problem) 
 {

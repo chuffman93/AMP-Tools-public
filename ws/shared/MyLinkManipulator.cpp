@@ -44,8 +44,8 @@ MyLinkManipulator::linkerState MyLinkManipulator::FK(vector<double> lengths, Man
 
 MyLinkManipulator::linkerState MyLinkManipulator::IK(vector<double> lengths, Eigen::Vector2d target) const
 {
-    int max_itr = 1e6;
-    double err = 1e-5;
+    int max_itr = 5000;
+    double err = 1e-12;
 
     bool solved = false;
 
@@ -70,7 +70,7 @@ MyLinkManipulator::linkerState MyLinkManipulator::IK(vector<double> lengths, Eig
 
     for(int i = 0; i < lengths.size(); i++)
     {
-        Ang[i] = 0.0;
+        Ang[i] = 0.1;
     }
     
 
@@ -99,12 +99,12 @@ MyLinkManipulator::linkerState MyLinkManipulator::IK(vector<double> lengths, Eig
                 
                 endTargetMag = errCurrToEnd*currToTargetMag;
 
-                // if(endTargetMag < 0.000001 || abs(endTargetMag-0.000001) < 1e-12 )
-                // {
-                //     cosRotAng = 1.0;
-                //     sinRotAng = 0.0;
-                // }
-                // else
+                if(endTargetMag < 0.000001 || abs(endTargetMag-0.000001) < 1e-12 )
+                {
+                    cosRotAng = 1.0;
+                    sinRotAng = 0.0;
+                }
+                else
                 {
                     // printf("target to End Magnitude: %.2f\n", endTargetMag);
                     // printf("currtoEnd (%.2f, %.2f) currtoTarget (%.2f, %.2f) \n", currToEnd[0], currToEnd[1], currtoTarget[0], currtoTarget[1]);

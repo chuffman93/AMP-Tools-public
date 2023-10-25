@@ -5,7 +5,7 @@
 #include "hw/HW2.h"
 
 // Include any custom headers you created in your workspace
-#include "MyBugAlgorithm.h"
+#include "MyBug1Algorithm.h"
 #include "MyBug2Algorithm.h"
 
 using namespace amp;
@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
     */
 
     // Declare your algorithm object 
-    MyBugAlgorithm algo1;
+    MyBug1Algorithm algo1;
     MyBug2Algorithm algo2;
     
     // Bug 1

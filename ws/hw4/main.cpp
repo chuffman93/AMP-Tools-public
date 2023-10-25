@@ -5,10 +5,8 @@
 #include "hw/HW4.h"
 
 // Include the header of the shared class
-#include "myUtils.h"
 #include "MyLinkManipulator.h"
 #include "MyGridCSpace2DConstructor.h"
-#include "MyGridCSpace2D.h"
 
 
 using namespace amp;
@@ -203,34 +201,30 @@ int main(int argc, char** argv) {
 
     // Exercise 3
     {
-        vector<double> linkLen{1.0, 1.0};
-        MyLinkManipulator q3(linkLen);
-        ManipulatorState st = Eigen::Vector2d{0.0, 0.0};
+        // vector<double> linkLen{1.0, 1.0};
+        // MyLinkManipulator q3(linkLen);
+        // ManipulatorState st = Eigen::Vector2d{0.0, 0.0};
  
-        // a
-        Environment2D env1 = HW4::getEx3Workspace1();
-        Visualizer::makeFigure(env1, q3, st);
-        MyGridCSpace2DConstructor GConA;
-        auto A = GConA.construct(q3, env1);
-        Visualizer::makeFigure(*(A.get()));
+        // // a
+        // Environment2D env1 = HW4::getEx3Workspace1();
+        // Visualizer::makeFigure(env1, q3, st);
+        // MyGridCSpace2DConstructor GConA;
+        // auto A = GConA.construct(q3, env1).release();
+        // Visualizer::makeFigure(*(A));
 
-        // b
-        Environment2D env2 = HW4::getEx3Workspace2();
-        Visualizer::makeFigure(env2, q3, st);
-        MyGridCSpace2DConstructor GConB;
-        auto B = GConB.construct(q3, env2);
-        // Visualizer::makeFigure();
+        // // b
+        // Environment2D env2 = HW4::getEx3Workspace2();
+        // Visualizer::makeFigure(env2, q3, st);
+        // MyGridCSpace2DConstructor GConB;
+        // auto B = GConB.construct(q3, env2).release();
+        // // Visualizer::makeFigure();
 
-        // c
-        Environment2D env3 = HW4::getEx3Workspace3();
-        Visualizer::makeFigure(env3, q3, st);
-        MyGridCSpace2DConstructor GConC;
-        auto C = GConC.construct(q3, env3);
-        // Visualizer::makeFigure();
-
-        A.release();
-        B.release();
-        C.release();
+        // // c
+        // Environment2D env3 = HW4::getEx3Workspace3();
+        // Visualizer::makeFigure(env3, q3, st);
+        // MyGridCSpace2DConstructor GConC;
+        // auto C = GConC.construct(q3, env3).release();
+        // // Visualizer::makeFigure();
     }
     Visualizer::showFigures();
     // Grade method

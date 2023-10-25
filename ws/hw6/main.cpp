@@ -404,16 +404,16 @@ class MyManipWFAlgo : public amp::ManipulatorWaveFrontAlgorithm {
         MyLinkManipulator myLinkAngent;
 
         virtual amp::ManipulatorTrajectory2Link plan(const LinkManipulator2D& link_manipulator_agent, const amp::Problem2D& problem) override {
-            ASSERT(link_manipulator_agent.nLinks() == 2, "Manipulator must have two links");
+            ASSERT(myLinkAngent.nLinks() == 2, "Manipulator must have two links");
 
             // Get the initial state from IK
-            amp::ManipulatorState init_state = link_manipulator_agent.getConfigurationFromIK(problem.q_init);
+            amp::ManipulatorState init_state = myLinkAngent.getConfigurationFromIK(problem.q_init);
 
             // Get the goal state from IK
-            amp::ManipulatorState goal_state = link_manipulator_agent.getConfigurationFromIK(problem.q_goal);
+            amp::ManipulatorState goal_state = myLinkAngent.getConfigurationFromIK(problem.q_goal);
 
             // Construct the grid cspace
-            std::unique_ptr<amp::GridCSpace2D> grid_cspace = m_c_space_constructor->construct(link_manipulator_agent, problem);
+            std::unique_ptr<amp::GridCSpace2D> grid_cspace = m_c_space_constructor->construct(myLinkAngent, problem);
 
             // Now that we have everything, we can call method to plan in C-space using the WaveFront algorithm
             // Note, we can use the `convert` overloads to easily go between ManipulatorState and ManipulatorState2Link

@@ -1,5 +1,6 @@
 #include "hw/HW4.h"
 #include "MyGridCSpace2D.h"
+#include "myUtils.h"
 #include "tools/ConfigurationSpace.h"
 
 using namespace amp;
@@ -18,6 +19,8 @@ class MyGridCSpace2DConstructor : public GridCSpace2DConstructor {
         /// which allows the type to pose as a GridCSpace2D (even though GridCSpace2D is abstract)
         virtual unique_ptr<GridCSpace2D> construct(const amp::LinkManipulator2D& manipulator, const amp::Environment2D& env) override;
         MyGridCSpace cSpace;
+        double dis = 0.01;
+        myUtils hw4Utils;
     protected:
        
 };
