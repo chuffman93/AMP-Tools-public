@@ -121,4 +121,56 @@ class myUtils {
             return false;
         }
 
+        bool checkInObj(pair<double, double> a, pair<double, double> b, vector<Eigen::Vector2d> verts)
+        {
+            
+            int count = 0;
+            line pLine{Eigen::Vector2d{a.first, a.second}, Eigen::Vector2d{b.first, b.second}};
+            line v;
+            for(int wI = 0; wI < verts.size()-1; wI++)
+            {
+                v.p1 = verts[wI];
+                v.p2 = verts[wI+1];
+                if(isInt(v,pLine)) 
+                {
+                    return true;
+                    // if(linDir(v.p1, p, v.p2) == 0)
+                    // {
+                    //     return onL(v, p);
+                    // } 
+                    // count++;
+                }
+            }
+            return false;
+        }
+
+
+        bool checkInObj(pair<double, double> a, pair<double, double> b, vector<Obstacle2D> obs)
+        {
+            
+            int count = 0;
+            line pLine{Eigen::Vector2d{a.first, a.second}, Eigen::Vector2d{b.first, b.second}};
+            line v;
+            vector<Eigen::Vector2d> verts;
+            for(int i = 0; i < obs.size(); i++)
+            {
+                verts = obs[i].verticesCCW();
+                for(int wI = 0; wI < verts.size()-1; wI++)
+                {
+                    v.p1 = verts[wI];
+                    v.p2 = verts[wI+1];
+                    if(isInt(v,pLine)) 
+                    {
+                        return true;
+                        // if(linDir(v.p1, p, v.p2) == 0)
+                        // {
+                        //     return onL(v, p);
+                        // } 
+                        // count++;
+                    }
+                }
+            }
+            return false;
+        }
+
 };
