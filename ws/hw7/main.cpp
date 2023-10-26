@@ -1,4 +1,5 @@
 #include <queue>
+#include <chrono>
 
 #include "AMPCore.h"
 #include "hw/HW2.h"
@@ -6,6 +7,7 @@
 
 using namespace amp;
 using namespace std;
+using namespace chrono;
 
 myUtils hw7U;
 
@@ -82,10 +84,8 @@ MapSearchResult dij_search(map< pair<double,double>, map< pair<double,double>, d
             q.push_back(g);
             break;
         }
-        // printf("Size of childrent to {%.2f, %.2f} is %ld\n", bst.first, bst.second, RM[bst].size());
         for(auto chld : RM[bst])
         {
-            // printf("Bst {%.2f, %.2f} , chid {%.2f, %.2f}\n", bst.first, bst.second, chld.first.first, chld.first.second);
             if(find(C.begin(), C.end(), chld.first) != C.end())
             {
                 continue;
@@ -110,7 +110,6 @@ MapSearchResult dij_search(map< pair<double,double>, map< pair<double,double>, d
             }
         }
         itrCount += 1;
-        tmpQ = O;
     }
     pair<double,double> tmp;
     if (q.back() == g)
@@ -139,9 +138,9 @@ MapSearchResult dij_search(map< pair<double,double>, map< pair<double,double>, d
     printf("Path %s with length of the path { ", ret.success ? "found" : "not found"); 
     for(auto i : q)
     {   
-        cout << "("<<i.first << ", " << i.second << ")";
+        cout << "("<<i.first << ", " << i.second << ") ";
     }
-    printf(" } is %.2f found in %d iterations\n",ret.path_cost, itrCount);
+    printf("} is %.2f found in %d iterations\n",ret.path_cost, itrCount);
 
     return ret;
 }
@@ -171,10 +170,9 @@ bool inRadius(pair<double,double> pt1, pair<double,double>  pt2, double r)
 template<typename T>
 T random(T from, T to)
 {
-    random_device dev;
-    mt19937 generator(dev());
+    default_random_engine rnd{random_device{}()};
     uniform_real_distribution<T> distr(from, to);
-    return distr(generator);
+    return distr(rnd);
 }
 
 
@@ -184,7 +182,6 @@ Path2D prm_plan(const Problem2D& problem)
     map< pair<double,double>, map< pair<double,double>, double > > RM;
     pair<double, double> st{problem.q_init[0], problem.q_init[1]};
     pair<double, double> g{problem.q_goal[0], problem.q_goal[1]};
-    printf("Start = {%.2f,%.2f} and Goal = {%.2f, %.2f}\n", st.first, st.second, g.first, g.second);
     pair<double, double> sampPt;
 
     RM.insert( make_pair(st, map<pair<double,double>,double>()) );
@@ -193,8 +190,8 @@ Path2D prm_plan(const Problem2D& problem)
     vector<Obstacle2D> obs = problem.obstacles;
     vector<Eigen::Vector2d> verts; 
 
-    int n = 1000;
-    double r = 5.0;
+    int n = 200;
+    double r = 2.0;
     int dec_per = 2;
     bool smooth = false;
 
@@ -203,13 +200,15 @@ Path2D prm_plan(const Problem2D& problem)
     samps.push_back(g);
     double xMin = problem.x_min;
     double xMax = problem.x_max;
+
     double yMin = problem.y_min;
     double yMax = problem.y_max;
+
     double xSamp;
     double ySamp;
 
     bool inObj = false;
-
+    auto stTime = high_resolution_clock::now();
     for(int i = 0; i < n; i++)
     {
         xSamp = round_double(random<double>(xMin, xMax), dec_per);
@@ -221,6 +220,7 @@ Path2D prm_plan(const Problem2D& problem)
             for(auto obj: obs)
             {
                 verts = obj.verticesCCW();
+                verts.push_back(verts[0]);
                 if(hw7U.checkInObj(Eigen::Vector2d{sampPt.first, sampPt.second}, verts))
                 {
                     inObj = true;
@@ -251,12 +251,17 @@ Path2D prm_plan(const Problem2D& problem)
         }
     }
     MapSearchResult dijRet = dij_search(RM, st, g);
-
+    
     if(smooth && dijRet.success)
+    {
+        
+    }
+    else if(dijRet.success)
     {
 
     }
-
+    auto stpTime = high_resolution_clock::now();
+    printf("Run Time for Algorithm: %ld ms\n", duration_cast<milliseconds>(stpTime-stTime).count());
     return ret;
 }
 

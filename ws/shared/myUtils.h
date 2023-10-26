@@ -15,7 +15,7 @@ class myUtils {
         {
             double val = ((b[1] - a[1]) * (c[0] - b[0])) 
                        - ((b[0] - a[0]) * (c[1] - b[1]));
-            if(abs(val) < 1e-12)
+            if(abs(val) < 1e-3)
             {
                 return 0;
             }
@@ -28,10 +28,10 @@ class myUtils {
 
         bool onL(line a, Eigen::Vector2d b)
         {
-            if((b[0] < max(a.p1[0], a.p2[0]) || abs(b[0]-max(a.p1[0], a.p2[0])) < 1e-12) 
-            && (b[0] > min(a.p1[0], a.p2[0]) || abs(b[0]-min(a.p1[0], a.p2[0])) < 1e-12) 
-            && (b[1] < max(a.p1[1], a.p2[1]) || abs(b[1]-max(a.p1[1], a.p2[1])) < 1e-12)
-            && (b[1] > min(a.p1[1], a.p2[1]) || abs(b[1]-min(a.p1[1], a.p2[1])) < 1e-12))
+            if((b[0] < max(a.p1[0], a.p2[0]) || abs(b[0]-max(a.p1[0], a.p2[0])) < 1e-3) 
+            && (b[0] > min(a.p1[0], a.p2[0]) || abs(b[0]-min(a.p1[0], a.p2[0])) < 1e-3) 
+            && (b[1] < max(a.p1[1], a.p2[1]) || abs(b[1]-max(a.p1[1], a.p2[1])) < 1e-3)
+            && (b[1] > min(a.p1[1], a.p2[1]) || abs(b[1]-min(a.p1[1], a.p2[1])) < 1e-3))
             {
                 return true;
             }
