@@ -3,6 +3,8 @@
 
 #include "AMPCore.h"
 #include "hw/HW2.h"
+#include "hw/HW5.h"
+#include "hw/HW7.h"
 #include "myUtils.h"
 
 using namespace amp;
@@ -11,267 +13,360 @@ using namespace chrono;
 
 myUtils hw7U;
 
-// /// @brief Derive this class and implement your algorithm in the `plan` method. 
-// class PRM : public PointMotionPlanner2D {
-//     public:
-//         /// @brief Solve a motion planning problem. Create a derived class and override this method
-//         //virtual amp::Path2D plan(const amp::Problem2D& problem) = 0;
+/// @brief Derive this class and implement your algorithm in the `plan` method. 
+class MyGBRRT : public GoalBiasRRT2D {
+    public:
+        MyGBRRT()
+        {
+            n = 5000;
+            r = 0.5;
+            eps = 0.5;
+            p_goal = 0.05;
+            dec_per = 2;
+            smooth = false;
+        }
 
-//         virtual ~PRM() {}
-// };
+        pair<double, double> grabRandPoint(pair<double, double> g, double xmin, double xmax, double ymin, double ymax)
+        {
+            bool grabG = (rand() % 100) <= (int)(p_goal*100);
+            return grabG ? g : make_pair(hw7U.round_double(hw7U.random<double>(xmin, xmax), dec_per), hw7U.round_double(hw7U.random<double>(ymin, ymax), dec_per));
+        }
 
-// /// @brief Derive this class and implement your algorithm in the `plan` method. 
-// class GoalBiasRRT : public PointMotionPlanner2D {
-//     public:
-//         /// @brief Solve a motion planning problem. Create a derived class and override this method
-//         //virtual amp::Path2D plan(const amp::Problem2D& problem) = 0;
+        /// @brief Solve a motion planning problem. Create a derived class and override this method
+        virtual amp::Path2D plan(const amp::Problem2D& problem) override 
+        {
+            Path2D ret;
+            map< pair<double,double>, map< pair<double,double>, double > > RM;
+            pair<double, double> st{problem.q_init[0], problem.q_init[1]};
+            pair<double, double> g{problem.q_goal[0], problem.q_goal[1]};
+            pair<double, double> sampPt;
+            pair<double, double> qNear;
+            pair<double, double> qNew;
+            double tmp_dist;
 
-//         virtual ~GoalBiasRRT() {}
-// };
+            RM.insert( make_pair(st, map<pair<double,double>,double>()) );
 
-struct MapSearchResult {
-    /// @brief Set to `true` if path was found, `false` if no path exists
-    bool success = false;
+            vector<Obstacle2D> obs = problem.obstacles;
+            vector<Eigen::Vector2d> verts; 
 
-    /// @brief Sequence of nodes where `node_path.front()` must contain init node, and `node_path.back()` must contain the goal node
-    std::list<pair<double,double>> node_path;
+            bool found = false;
 
-    /// @brief Path cost (must equal sum of edge weights along node_path)
-    double path_cost;
+            list<pair<double, double>> samps;
+            samps.push_back(st);
+
+            double xSamp;
+            double ySamp;
+            double itr = 0;
+            bool inObj = false;
+
+            double xMin = problem.x_min;
+            double xMax = problem.x_max;
+
+            double yMin = problem.y_min;
+            double yMax = problem.y_max;
+
+
+            auto stTime = high_resolution_clock::now();
+            while(!found && itr < n)
+            {
+                sampPt = grabRandPoint(g, xMin, xMax, yMin, yMax);
+                for(auto obj: obs)
+                {
+                    verts = obj.verticesCCW();
+                    verts.push_back(verts[0]);
+                    if(hw7U.checkInObj(Eigen::Vector2d{sampPt.first, sampPt.second}, verts))
+                    {
+                        inObj = true;
+                        break;
+                    }
+                }
+                if(inObj)
+                {
+                    inObj = false;
+                    continue;
+                }
+                
+                qNear = make_pair(0,0);
+                tmp_dist = INFINITY;
+                for(auto itr : RM)
+                {
+                    if (itr.first == sampPt)
+                        continue;
+
+                    if (tmp_dis > hw7U.euc_dis(itr.first, sampPt))
+                    {
+                        tmp_dis = hw7U.euc_dis(itr.first, sampPt);
+                        qNear = itr.first;
+                    }
+                }
+                qNew = hw7U.newPt(qNear, sampPt, r);
+                itr+=1;
+            }
+            myUtils::MapSearchResult dijRet = hw7U.dij_search(RM, st, g);
+            
+            if(smooth && dijRet.success)
+            {
+                smoothPath.push_back(dijRet.node_path.front());
+                pair<double, double> prev;
+                prev = smoothPath.back();
+                for(auto pt : dijRet.node_path)
+                {
+                    if(!hw7U.checkInObj(smoothPath.back(), pt, obs))
+                    {
+                        prev = pt;
+                        continue;
+                    }
+                    else
+                    {
+                        smoothPath.push_back(prev);
+                    }
+                }
+                smoothPath.push_back(dijRet.node_path.back());
+                ret = hw7U.pairToEigenVector(smoothPath);
+                printf("Smoothed ");
+                hw7U.printPath(ret);
+            }
+            else if(dijRet.success)
+            {
+                ret = hw7U.pairToEigenVector(dijRet.node_path);
+            }
+            auto stpTime = high_resolution_clock::now();
+            printf("Run Time for Algorithm: %ld ms\n", duration_cast<milliseconds>(stpTime-stTime).count());
+
+            return ret;
+        }
+
+        void setSampleSize(int a)
+        {
+            n = a;
+        }
+
+        int getSampleSize()
+        {
+            return n;
+        }
+
+        void setPtRadius(double a)
+        {
+            r = a;
+        }
+
+        double getPtRadius()
+        {
+            return r;
+        }
+
+        void setEps(double a)
+        {
+            eps = a;
+        }
+
+        double getEps()
+        {
+            return eps;
+        }
+
+        void setPGoal(double a)
+        {
+            p_goal = a;
+        }
+
+        double getPGoal()
+        {
+            return p_goal;
+        }
+
+        void setDecPercision(int a)
+        {
+            dec_per = a;
+        }
+
+        void setSmoothing(bool a)
+        {
+            smooth = a;
+        }
+
+
+        virtual ~MyGBRRT() {}
+    
+    private:
+        int n;
+        double r;
+        double eps;
+        double p_goal;
+        int dec_per;
+        bool smooth;
 };
 
-MapSearchResult dij_search(map< pair<double,double>, map< pair<double,double>, double > > RM,
-                           pair<double,double> st, 
-                           pair<double,double> g)
-{
-    MapSearchResult ret;
-
-    pair<double, double> bst;
-
-    vector<pair<double, double>> childs;
-    vector<double> weights;
-    
-    typedef pair<double, pair<double, double>> nW;
-    map <pair<double, double>, double> dist;
-    map <pair<double, double>, pair<double, double>> bkPtr;
-    
-    priority_queue<nW, vector<nW>, greater<nW> > O;
-    nW tmpTp;
-    list<pair<double, double>> Ol;
-    list<pair<double, double>> C;
-    list<pair<double, double>> q;
-
-    double gn;
-    double h;
-    double f;
-
-    O.push(make_pair(0, st));
-    dist.insert({st, 0});
-    Ol.push_back(st);
-    q.push_back(st);
-
-    int itrCount = 0;
-    while(!O.empty())
-    {
-        bst = O.top().second;
-        // printf("Bst {%.2f, %.2f}\n", bst.first, bst.second);
-        O.pop();
-        Ol.remove(bst);
-        C.push_back(bst);
-
-        if (bst == g)
+/// @brief Derive this class and implement your algorithm in the `plan` method. 
+class MyPRM : public PRM2D {
+    public:
+        MyPRM()
         {
-            q.push_back(g);
-            break;
+            n = 500;
+            r = 2.0;
+            dec_per = 2;
+            smooth = true;
         }
-        for(auto chld : RM[bst])
-        {
-            if(find(C.begin(), C.end(), chld.first) != C.end())
-            {
-                continue;
-            }
 
-            if(find(Ol.begin(), Ol.end(), chld.first) == Ol.end())
-            {
-                gn = RM[bst][chld.first] + dist.find(bst)->second;
-                // printf("GN = %.2f\n",gn);
-                O.push( make_pair(gn, chld.first) );
-                Ol.push_back(chld.first);
-                dist.insert({chld.first, gn});
-                bkPtr.insert({chld.first, bst});
-            }
-            else if((dist.find(bst)->second + RM[bst][chld.first] ) < dist.find(chld.first)->second)
-            {
-                gn = RM[bst][chld.first] + dist.find(bst)->second;
-                // printf("GN = %.2f\n",gn);
-                O.push( make_pair(gn, chld.first) );
-                bkPtr.find(chld.first)->second = bst;
-                dist.find(chld.first)->second = gn;
-            }
+        void setSampleSize(int a)
+        {
+            n = a;
         }
-        itrCount += 1;
-    }
-    pair<double,double> tmp;
-    if (q.back() == g)
-    {
-        tmp = g;
-        
-        while(bkPtr.find(tmp)->second != st)
+
+        int getSampleSize()
         {
-            auto it = q.begin();
-            advance(it, 1);
-            q.insert(it,bkPtr.find(tmp)->second);
-            tmp = bkPtr.find(tmp)->second;
+            return n;
         }
-        ret.node_path = q;
-        ret.success = true;
-        ret.path_cost = dist.find(g)->second;
 
-    }
-    else
-    {
-        ret.node_path = q;
-        ret.success = false;
-        ret.path_cost = -1;
-
-    }
-    printf("Path %s with length of the path { ", ret.success ? "found" : "not found"); 
-    for(auto i : q)
-    {   
-        cout << "("<<i.first << ", " << i.second << ") ";
-    }
-    printf("} is %.2f found in %d iterations\n",ret.path_cost, itrCount);
-
-    return ret;
-}
-
-
-double euc_dis(pair<double, double> a, pair<double, double> b)
-{
-    return sqrt(pow(a.first-b.first,2) + pow(a.second-b.second,2));
-}
-
-double euc_dis(Eigen::Vector2d a, Eigen::Vector2d b)
-{
-    return sqrt(pow(a[0]-b[0],2) + pow(a[1]-b[1],2));
-}
-
-double round_double(double a, int places)
-{
-    double multi = pow(10.0, places);
-    return(round(a*multi)/multi);
-}
-
-bool inRadius(pair<double,double> pt1, pair<double,double>  pt2, double r)
-{
-    return (euc_dis(pt1, pt2) < r);
-}
-
-template<typename T>
-T random(T from, T to)
-{
-    default_random_engine rnd{random_device{}()};
-    uniform_real_distribution<T> distr(from, to);
-    return distr(rnd);
-}
-
-
-Path2D prm_plan(const Problem2D& problem)
-{
-    Path2D ret;
-    map< pair<double,double>, map< pair<double,double>, double > > RM;
-    pair<double, double> st{problem.q_init[0], problem.q_init[1]};
-    pair<double, double> g{problem.q_goal[0], problem.q_goal[1]};
-    pair<double, double> sampPt;
-
-    RM.insert( make_pair(st, map<pair<double,double>,double>()) );
-    RM.insert( make_pair(g, map<pair<double,double>,double>()) );
-
-    vector<Obstacle2D> obs = problem.obstacles;
-    vector<Eigen::Vector2d> verts; 
-
-    int n = 200;
-    double r = 2.0;
-    int dec_per = 2;
-    bool smooth = false;
-
-    list<pair<double, double>> samps;
-    samps.push_back(st);
-    samps.push_back(g);
-    double xMin = problem.x_min;
-    double xMax = problem.x_max;
-
-    double yMin = problem.y_min;
-    double yMax = problem.y_max;
-
-    double xSamp;
-    double ySamp;
-
-    bool inObj = false;
-    auto stTime = high_resolution_clock::now();
-    for(int i = 0; i < n; i++)
-    {
-        xSamp = round_double(random<double>(xMin, xMax), dec_per);
-        ySamp = round_double(random<double>(yMin, yMax), dec_per);
-        sampPt = {xSamp, ySamp};
-
-        if(find(samps.begin(), samps.end(), sampPt) == samps.end())
+        void setPtRadius(double a)
         {
-            for(auto obj: obs)
+            r = a;
+        }
+
+        double getPtRadius()
+        {
+            return r;
+        }
+
+        void setDecPercision(int a)
+        {
+            dec_per = a;
+        }
+
+        void setSmoothing(bool a)
+        {
+            smooth = a;
+        }
+
+        /// @brief Solve a motion planning problem. Create a derived class and override this method
+        virtual amp::Path2D plan(const amp::Problem2D& problem) override
+        {
+            Path2D ret;
+            map< pair<double,double>, map< pair<double,double>, double > > RM;
+            pair<double, double> st{problem.q_init[0], problem.q_init[1]};
+            pair<double, double> g{problem.q_goal[0], problem.q_goal[1]};
+            pair<double, double> sampPt;
+
+            RM.insert( make_pair(st, map<pair<double,double>,double>()) );
+            RM.insert( make_pair(g, map<pair<double,double>,double>()) );
+
+            vector<Obstacle2D> obs = problem.obstacles;
+            vector<Eigen::Vector2d> verts; 
+
+            list<pair<double, double>> samps;
+            list<pair<double, double>> smoothPath;
+            samps.push_back(st);
+            samps.push_back(g);
+            double xMin = problem.x_min;
+            double xMax = problem.x_max;
+
+            double yMin = problem.y_min;
+            double yMax = problem.y_max;
+
+            double xSamp;
+            double ySamp;
+
+            bool inObj = false;
+            auto stTime = high_resolution_clock::now();
+            for(int i = 0; i < n; i++)
             {
-                verts = obj.verticesCCW();
-                verts.push_back(verts[0]);
-                if(hw7U.checkInObj(Eigen::Vector2d{sampPt.first, sampPt.second}, verts))
+                xSamp = hw7U.round_double(hw7U.random<double>(xMin, xMax), dec_per);
+                ySamp = hw7U.round_double(hw7U.random<double>(yMin, yMax), dec_per);
+                sampPt = {xSamp, ySamp};
+
+                if(find(samps.begin(), samps.end(), sampPt) == samps.end())
                 {
-                    inObj = true;
-                    break;
+                    for(auto obj: obs)
+                    {
+                        verts = obj.verticesCCW();
+                        verts.push_back(verts[0]);
+                        if(hw7U.checkInObj(Eigen::Vector2d{sampPt.first, sampPt.second}, verts))
+                        {
+                            inObj = true;
+                            break;
+                        }
+                    }
+
+                    if(!inObj)
+                    {
+                        RM.insert( make_pair(sampPt, map<pair<double,double>,double>()) );
+                        samps.push_back(sampPt);
+                    }
+                }
+                inObj = false;
+            }
+            for(auto stPtM : RM)
+            {
+                for(auto tstPt: samps)
+                {
+                    if(stPtM.first == tstPt)
+                    {
+                        continue;
+                    }
+                    if(hw7U.inRadius(stPtM.first,tstPt,r) && !hw7U.checkInObj(stPtM.first, tstPt, obs))
+                    {
+                        RM[stPtM.first].insert({tstPt, hw7U.euc_dis(stPtM.first, tstPt)});
+                    }
                 }
             }
-
-            if(!inObj)
+            myUtils::MapSearchResult dijRet = hw7U.dij_search(RM, st, g);
+            
+            if(smooth && dijRet.success)
             {
-                RM.insert( make_pair(sampPt, map<pair<double,double>,double>()) );
-                samps.push_back(sampPt);
+                smoothPath.push_back(dijRet.node_path.front());
+                pair<double, double> prev;
+                prev = smoothPath.back();
+                for(auto pt : dijRet.node_path)
+                {
+                    if(!hw7U.checkInObj(smoothPath.back(), pt, obs))
+                    {
+                        prev = pt;
+                        continue;
+                    }
+                    else
+                    {
+                        smoothPath.push_back(prev);
+                    }
+                }
+                smoothPath.push_back(dijRet.node_path.back());
+                ret = hw7U.pairToEigenVector(smoothPath);
+                printf("Smoothed ");
+                hw7U.printPath(ret);
             }
+            else if(dijRet.success)
+            {
+                ret = hw7U.pairToEigenVector(dijRet.node_path);
+            }
+            auto stpTime = high_resolution_clock::now();
+            printf("Run Time for Algorithm: %ld ms\n", duration_cast<milliseconds>(stpTime-stTime).count());
+            return ret;
         }
-        inObj = false;
-    }
-    for(auto stPtM : RM)
-    {
-        for(auto tstPt: samps)
-        {
-            if(stPtM.first == tstPt)
-            {
-                continue;
-            }
-            if(inRadius(stPtM.first,tstPt,r) && !hw7U.checkInObj(stPtM.first, tstPt, obs))
-            {
-                RM[stPtM.first].insert({tstPt, euc_dis(stPtM.first, tstPt)});
-            }
-        }
-    }
-    MapSearchResult dijRet = dij_search(RM, st, g);
-    
-    if(smooth && dijRet.success)
-    {
-        
-    }
-    else if(dijRet.success)
-    {
 
-    }
-    auto stpTime = high_resolution_clock::now();
-    printf("Run Time for Algorithm: %ld ms\n", duration_cast<milliseconds>(stpTime-stTime).count());
-    return ret;
-}
+        virtual ~MyPRM() {}
+
+    private:
+        int n = 200;
+        double r = 2.0;
+        int dec_per = 2;
+        bool smooth = true;
+};
+
 
 
 int main(int argc, char** argv)
 {
-    
-    Problem2D p1w1 = HW2::getWorkspace1();
 
-    Path2D p1w1p = prm_plan(p1w1);
+    Problem2D wa  = HW5::getWorkspace1();
+    Problem2D wb1 = HW2::getWorkspace1();
+    Problem2D wb2 = HW2::getWorkspace2();
+
+    MyPRM prm;
+    MyGBRRT rrt;
+
+    Path2D p1wa = prm.plan(wa);
+    Path2D p1wb2 = prm.plan(wb1);
+    Path2D p1wb3 = prm.plan(wb2);
 
     return 0;
 }
