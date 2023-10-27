@@ -176,6 +176,38 @@ class myUtils {
             return false;
         }
 
+        bool checkInObj(pair<double, double> a, vector<Obstacle2D> obs)
+        {
+            
+            int count = 0;
+            line pLine{Eigen::Vector2d{a.first, a.second}, Eigen::Vector2d{999.0, a.second}};
+            line v;
+            vector<Eigen::Vector2d> verts;
+            for(int i = 0; i < obs.size(); i++)
+            {
+                verts = obs[i].verticesCCW();
+                verts.push_back(verts[0]);
+                for(int wI = 0; wI < verts.size()-1; wI++)
+                {
+                    v.p1 = verts[wI];
+                    v.p2 = verts[wI+1];
+                    if(isInt(v,pLine)) 
+                    {
+                        if(linDir(v.p1, Eigen::Vector2d{a.first, a.second}, v.p2) == 0)
+                        {
+                            return onL(v,  Eigen::Vector2d{a.first, a.second});
+                        } 
+                        count++;
+                    }
+                }
+                if(count % 2 != 0)
+                {
+                    break;;
+                }
+            }
+            return count & 1;
+        }
+
         struct MapSearchResult {
             /// @brief Set to `true` if path was found, `false` if no path exists
             bool success = false;
@@ -282,8 +314,13 @@ class myUtils {
                 ret.path_cost = -1;
 
             }
-            printPath(ret);
+            // printPath(ret);
             return ret;
+        }
+
+        bool inbounds(pair<double, double> a, double xmin, double xmax, double ymin, double ymax)
+        {
+            return (a.first > xmin && a.first < xmax && a.second > ymin && a.second < ymax);
         }
 
         void printPath(MapSearchResult a)
@@ -310,7 +347,7 @@ class myUtils {
         {
             double m = (b.second - a.second) / (b.first - a.first);
             double rad = atan(m);
-            return make_pair(round<double>(a.first+step_size*cos(rad),2), round<double>(a.second+step_size*sin(rad),2));
+            return make_pair(round_double(a.first+step_size*cos(rad),2), round_double(a.second+step_size*sin(rad),2));
         }
 
         double euc_dis(pair<double, double> a, pair<double, double> b)
@@ -331,7 +368,7 @@ class myUtils {
 
         bool inRadius(pair<double,double> pt1, pair<double,double>  pt2, double r)
         {
-            return (euc_dis(pt1, pt2) < r);
+            return (round_double(euc_dis(pt1, pt2),2) <= r);
         }
 
         template<typename T>
