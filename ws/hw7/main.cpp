@@ -36,7 +36,7 @@ class MyGBRRT : public GoalBiasRRT2D {
         virtual amp::Path2D plan(const amp::Problem2D& problem) override 
         {
             Path2D ret;
-            map< pair<double,double>, map< pair<double,double>, double > > RM;
+            RM.clear();
             pair<double, double> st{problem.q_init[0], problem.q_init[1]};
             pair<double, double> g{problem.q_goal[0], problem.q_goal[1]};
             pair<double, double> sampPt;
@@ -221,6 +221,11 @@ class MyGBRRT : public GoalBiasRRT2D {
             
         }
 
+        // pair<Graph<double>, map<amp::Node, Eigen::Vector2d> > getGraphFromRM()
+        // {
+            
+        // }
+
         void setSampleSize(int a)
         {
             n = a;
@@ -291,6 +296,7 @@ class MyGBRRT : public GoalBiasRRT2D {
         bool smooth;
         long time;
         bool valid_path;
+        map< pair<double,double>, map< pair<double,double>, double > > RM;
 };
 
 /// @brief Derive this class and implement your algorithm in the `plan` method. 
@@ -544,11 +550,13 @@ int main(int argc, char** argv)
     Path2D p1wb2 = prm.plan(wb1);
     Path2D p1wb3 = prm.plan(wb2);
 
+
+
     tuple<int, double, double, double> prams{5000, 0.5, 0.05, 0.25};
     list<Problem2D> probs{wa, wb1, wb2};
     vector<string> ws{"Ex 2 HW 5", "Ex 2 HW 2 WS 1", "Ex 2 HW 2 WS 2"};
 
-    if(true)
+    if(false)
     {
         rrt.benchMarkAlgo(prams, numRuns, false, probs, ws);
     }
