@@ -100,6 +100,10 @@ class MyGBRRT : public GoalBiasRRT2D {
                     }
                 }
                 qNew = hw7U.newPt(qNear, sampPt, r);
+                while(!hw7U.checkInObj(qNear, qNew, obs))
+                {
+                    // DO THE LOGIC
+                }
                 itr+=1;
             }
             myUtils::MapSearchResult dijRet = hw7U.dij_search(RM, st, g);
