@@ -101,6 +101,7 @@ class MyGBRRT : public GoalBiasRRT2D {
                     }
                 }
                 qNew = hw7U.newPt(qNear, sampPt, r);
+                
                 while(!hw7U.checkInObj(qNew,obs) && !hw7U.checkInObj(qNear, qNew, obs) && hw7U.inbounds(qNew, xMin, xMax, yMin, yMax))
                 {
                     if(qNew == g || hw7U.round_double(hw7U.euc_dis(qNew,g),2) <= eps)
@@ -127,11 +128,12 @@ class MyGBRRT : public GoalBiasRRT2D {
                         }
                         break;
                     }
-                    RM[qNear][qNew] = hw7U.euc_dis(qNear,qNew);
                     if(RM.find(qNew) == RM.end())
                     {   
                         RM.insert( make_pair(qNew, map<pair<double,double>,double>()) );
                     }
+                    RM[qNear][qNew] = hw7U.euc_dis(qNear,qNew);
+                    
                     qNear = qNew;
                     qNew = hw7U.newPt(qNear, sampPt, r);
                 }
@@ -221,10 +223,52 @@ class MyGBRRT : public GoalBiasRRT2D {
             
         }
 
-        // pair<Graph<double>, map<amp::Node, Eigen::Vector2d> > getGraphFromRM()
-        // {
-            
-        // }
+        pair<Graph<double>, map<amp::Node, Eigen::Vector2d> > getGraphFromRM()
+        {
+            Graph<double> ret1;
+            map<Node, Eigen::Vector2d> ret2;
+
+            uint32_t nodeCnt = 0;
+            uint32_t fromNode;
+            uint32_t toNode;
+
+            for( auto key : RM)
+            {   
+                fromNode = checkInMap(ret2, Eigen::Vector2d{key.first.first, key.first.second});    
+                if(fromNode == -1)
+                {
+                    fromNode = nodeCnt;
+                    ret2.insert({fromNode, Eigen::Vector2d{key.first.first, key.first.second}});
+                    nodeCnt++;
+                }
+
+                for( auto inKey : key.second)
+                {
+                    toNode = checkInMap(ret2, Eigen::Vector2d{inKey.first.first, inKey.first.second});
+                    if(toNode == -1)
+                    {
+                        toNode = nodeCnt;
+                        ret2.insert({toNode, Eigen::Vector2d{inKey.first.first, inKey.first.second}});
+                        nodeCnt++;
+                    }
+
+                    ret1.connect(fromNode, toNode, RM[key.first][inKey.first]);
+                }
+            }
+            return make_pair(ret1, ret2);
+        }
+
+        Node checkInMap(map<Node, Eigen::Vector2d> a, Eigen::Vector2d b)
+        {
+            for(auto key : a)
+            {
+                if(key.second == b)
+                {
+                    return key.first;
+                }
+            }
+            return -1;
+        }
 
         void setSampleSize(int a)
         {
@@ -414,6 +458,7 @@ class MyPRM : public PRM2D {
                     }
                 }
             }
+
             myUtils::MapSearchResult dijRet = hw7U.dij_search(RM, st, g);
             
             if(smooth && dijRet.success)
@@ -501,6 +546,53 @@ class MyPRM : public PRM2D {
             
         }
 
+        pair<Graph<double>, map<amp::Node, Eigen::Vector2d> > getGraphFromRM()
+        {
+            Graph<double> ret1;
+            map<Node, Eigen::Vector2d> ret2;
+
+            uint32_t nodeCnt = 0;
+            uint32_t fromNode;
+            uint32_t toNode;
+
+            for( auto key : RM)
+            {   
+                fromNode = checkInMap(ret2, Eigen::Vector2d{key.first.first, key.first.second});    
+                if(fromNode == -1)
+                {
+                    fromNode = nodeCnt;
+                    ret2.insert({fromNode, Eigen::Vector2d{key.first.first, key.first.second}});
+                    nodeCnt++;
+                }
+
+                for( auto inKey : key.second)
+                {
+                    toNode = checkInMap(ret2, Eigen::Vector2d{inKey.first.first, inKey.first.second});
+                    if(toNode == -1)
+                    {
+                        toNode = nodeCnt;
+                        ret2.insert({toNode, Eigen::Vector2d{inKey.first.first, inKey.first.second}});
+                        nodeCnt++;
+                    }
+
+                    ret1.connect(fromNode, toNode, inKey.second);
+                }
+            }
+            return make_pair(ret1, ret2);
+        }
+
+        Node checkInMap(map<Node, Eigen::Vector2d> a, Eigen::Vector2d b)
+        {
+            for(auto key : a)
+            {
+                if(key.second == b)
+                {
+                    return key.first;
+                }
+            }
+            return -1;
+        }
+
         virtual ~MyPRM() {}
 
     private:
@@ -546,9 +638,23 @@ int main(int argc, char** argv)
     prm.setPtRadius(1);
     prm.setSampleSize(200);
     Path2D p1wa = prm.plan(wa);
-    prm.setPtRadius(2);
+    pair<Graph<double>, map<Node,Eigen::Vector2d>> prmRet = prm.getGraphFromRM();
+    // Visualizer::makeFigure(wa, prmRet.first, prmRet.second);
+    // Visualizer::makeFigure(wa, p1wa);
+    // Visualizer::showFigures();
+
+    prm.setPtRadius(2); 
     Path2D p1wb2 = prm.plan(wb1);
+    prmRet = prm.getGraphFromRM();
+    // Visualizer::makeFigure(wb1, prmRet.first, prmRet.second);
+    // Visualizer::makeFigure(wb1, p1wb2);
+    // Visualizer::showFigures();
+
     Path2D p1wb3 = prm.plan(wb2);
+    prmRet = prm.getGraphFromRM();
+    // Visualizer::makeFigure(wb2, prmRet.first, prmRet.second);
+    // Visualizer::makeFigure(wb2, p1wb3);
+    // Visualizer::showFigures();
 
 
 
@@ -562,13 +668,29 @@ int main(int argc, char** argv)
     }
 
     Path2D p2wa = rrt.plan(wa);
+    pair<Graph<double>, map<Node,Eigen::Vector2d>> rrtRet = rrt.getGraphFromRM();
+    // Visualizer::makeFigure(wa, rrtRet.first, rrtRet.second);
+    // Visualizer::makeFigure(wa, p2wa);
+    // Visualizer::showFigures();
+
     Path2D p2wb2 = rrt.plan(wb1);
+    rrtRet = rrt.getGraphFromRM();
+    // Visualizer::makeFigure(wb1, rrtRet.first, rrtRet.second);
+    // Visualizer::makeFigure(wb1, p2wb2);
+    // Visualizer::showFigures();
+
     Path2D p2wb3 = rrt.plan(wb2);
+    rrtRet = rrt.getGraphFromRM();
+    // Visualizer::makeFigure(wb2, rrtRet.first, rrtRet.second);
+    // Visualizer::makeFigure(wb2, p2wb3);
+    // Visualizer::showFigures();
+
+    
 
     MyPRM prm_grade;
     MyGBRRT rrt_grade;
 
-    // HW7::grade(prm_grade, rrt_grade, "corey.huffman@colorado.edu", argc, argv);
+    HW7::grade(prm_grade, rrt_grade, "corey.huffman@colorado.edu", argc, argv);
 
     return 0;
 }
