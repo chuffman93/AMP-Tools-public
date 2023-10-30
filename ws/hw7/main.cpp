@@ -19,8 +19,8 @@ class MyGBRRT : public GoalBiasRRT2D {
         MyGBRRT()
         {
             n = 7000;
-            r = 0.5;
-            eps = 0.25;
+            r = 1.0;
+            eps = 0.5;
             p_goal = 0.05;
             dec_per = 2;
             smooth = false;
@@ -102,7 +102,7 @@ class MyGBRRT : public GoalBiasRRT2D {
                 }
                 qNew = hw7U.newPt(qNear, sampPt, r);
                 
-                while(!hw7U.checkInObj(qNew,obs) && !hw7U.checkInObj(qNear, qNew, obs) && hw7U.inbounds(qNew, xMin, xMax, yMin, yMax))
+                if(!hw7U.checkInObj(qNew,obs) && !hw7U.checkInObj(qNear, qNew, obs) && hw7U.inbounds(qNew, xMin, xMax, yMin, yMax))
                 {
                     if(qNew == g || hw7U.round_double(hw7U.euc_dis(qNew,g),2) <= eps)
                     {
@@ -113,7 +113,6 @@ class MyGBRRT : public GoalBiasRRT2D {
                             RM.insert( make_pair(qNew, map<pair<double,double>,double>()) );
                         }
                         RM[qNear][qNew] = hw7U.euc_dis(qNear,qNew);
-                        break;
                     }
                     else if(hw7U.round_double(hw7U.euc_dis(qNew,sampPt),2) <= eps)
                     {
@@ -126,7 +125,6 @@ class MyGBRRT : public GoalBiasRRT2D {
                             }
                             RM[qNear][qNew] = hw7U.euc_dis(qNear,qNew);
                         }
-                        break;
                     }
                     if(RM.find(qNew) == RM.end())
                     {   
@@ -227,28 +225,34 @@ class MyGBRRT : public GoalBiasRRT2D {
         {
             Graph<double> ret1;
             map<Node, Eigen::Vector2d> ret2;
+            Eigen::Vector2d ikey;
+            Eigen::Vector2d okey;
 
             uint32_t nodeCnt = 0;
             uint32_t fromNode;
             uint32_t toNode;
+            uint32_t tmpTo;
+            uint32_t tmpFrom;
 
             for( auto key : RM)
             {   
-                fromNode = checkInMap(ret2, Eigen::Vector2d{key.first.first, key.first.second});    
+                okey =  Eigen::Vector2d{key.first.first, key.first.second};
+                fromNode = checkInMap(ret2,okey);    
                 if(fromNode == -1)
                 {
                     fromNode = nodeCnt;
-                    ret2.insert({fromNode, Eigen::Vector2d{key.first.first, key.first.second}});
+                    ret2.insert({fromNode, okey});
                     nodeCnt++;
                 }
 
                 for( auto inKey : key.second)
                 {
-                    toNode = checkInMap(ret2, Eigen::Vector2d{inKey.first.first, inKey.first.second});
+                    ikey =  Eigen::Vector2d{inKey.first.first, inKey.first.second};
+                    toNode = checkInMap(ret2, ikey);
                     if(toNode == -1)
                     {
                         toNode = nodeCnt;
-                        ret2.insert({toNode, Eigen::Vector2d{inKey.first.first, inKey.first.second}});
+                        ret2.insert({toNode, ikey});
                         nodeCnt++;
                     }
 
@@ -262,7 +266,7 @@ class MyGBRRT : public GoalBiasRRT2D {
         {
             for(auto key : a)
             {
-                if(key.second == b)
+                if(key.second[0] == b[0] && key.second[1] == b[1])
                 {
                     return key.first;
                 }
@@ -348,7 +352,7 @@ class MyPRM : public PRM2D {
     public:
         MyPRM()
         {
-            n = 2000;
+            n = 1500;
             r = 1.0;
             dec_per = 2;
             smooth = false;
@@ -622,6 +626,7 @@ int main(int argc, char** argv)
 
     MyPRM prm;
     MyGBRRT rrt;
+    
     if(false)
     {
         prm.benchMarkAlgo(p1a, numRuns, false, wa, "Ex 2 HW 5");
@@ -638,22 +643,25 @@ int main(int argc, char** argv)
     prm.setPtRadius(1);
     prm.setSampleSize(200);
     Path2D p1wa = prm.plan(wa);
-    pair<Graph<double>, map<Node,Eigen::Vector2d>> prmRet = prm.getGraphFromRM();
+    // pair<Graph<double>, map<Node,Eigen::Vector2d>> prmRet = prm.getGraphFromRM();
     // Visualizer::makeFigure(wa, prmRet.first, prmRet.second);
     // Visualizer::makeFigure(wa, p1wa);
+    // printf("Path Length = %.2f\n", p1wa.length());
     // Visualizer::showFigures();
 
     prm.setPtRadius(2); 
     Path2D p1wb2 = prm.plan(wb1);
-    prmRet = prm.getGraphFromRM();
+    // prmRet = prm.getGraphFromRM();
     // Visualizer::makeFigure(wb1, prmRet.first, prmRet.second);
     // Visualizer::makeFigure(wb1, p1wb2);
+    // printf("Path Length = %.2f\n", p1wb2.length());
     // Visualizer::showFigures();
 
     Path2D p1wb3 = prm.plan(wb2);
-    prmRet = prm.getGraphFromRM();
+    // prmRet = prm.getGraphFromRM();
     // Visualizer::makeFigure(wb2, prmRet.first, prmRet.second);
     // Visualizer::makeFigure(wb2, p1wb3);
+    // printf("Path Length = %.2f\n", p1wb3.length());
     // Visualizer::showFigures();
 
 
@@ -671,18 +679,27 @@ int main(int argc, char** argv)
     pair<Graph<double>, map<Node,Eigen::Vector2d>> rrtRet = rrt.getGraphFromRM();
     // Visualizer::makeFigure(wa, rrtRet.first, rrtRet.second);
     // Visualizer::makeFigure(wa, p2wa);
+    // printf("Path Length = %.2f\n", p2wa.length());
     // Visualizer::showFigures();
+
+    rrtRet.first.clear();
+    rrtRet.second.clear();
 
     Path2D p2wb2 = rrt.plan(wb1);
     rrtRet = rrt.getGraphFromRM();
     // Visualizer::makeFigure(wb1, rrtRet.first, rrtRet.second);
     // Visualizer::makeFigure(wb1, p2wb2);
+    // printf("Path Length = %.2f\n", p2wb2.length());
     // Visualizer::showFigures();
+
+    rrtRet.first.clear();
+    rrtRet.second.clear();
 
     Path2D p2wb3 = rrt.plan(wb2);
     rrtRet = rrt.getGraphFromRM();
     // Visualizer::makeFigure(wb2, rrtRet.first, rrtRet.second);
     // Visualizer::makeFigure(wb2, p2wb3);
+    // printf("Path Length = %.2f\n", p2wb3.length());
     // Visualizer::showFigures();
 
     
