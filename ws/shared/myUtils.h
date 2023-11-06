@@ -1,3 +1,5 @@
+#ifndef MYUTILS_H
+#define MYUTILS_H
 #include <queue>
 #include <cmath>
 
@@ -390,3 +392,4 @@ class myUtils {
         }
 
 };
+#endif
