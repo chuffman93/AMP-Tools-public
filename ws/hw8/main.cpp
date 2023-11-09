@@ -26,5 +26,7 @@ int main(int argc, char** argv)
     myCentralizedMultiAgentRRT p1;
     myDecentralizedMultiAgentRRT p2;
 
+    MultiAgentPath2D cmaPath = p1.plan(prob1);
+
     return 0;
 }
