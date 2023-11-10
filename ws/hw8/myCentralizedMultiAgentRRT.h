@@ -21,10 +21,69 @@ class myCentralizedMultiAgentRRT : public CentralizedMultiAgentRRT{
             dec_per = 2;
         }
 
+        vector<pair<double,double>> grabRandPoint(vector<pair<double,double>> g, size_t numAgents, double xmin, double xmax, double ymin, double ymax)
+        {
+            bool grabG = (rand() % 100) <= (int)(p_goal*100);
+            if(grabG)
+            {
+                return g;
+            }
+            else
+            {
+                vector<pair<double,double>> ret;
+                for(int i = 0; i < numAgents; i++)
+                {
+                    ret.push_back(make_pair(myCMA.round_double(myCMA.random<double>(xmin, xmax), dec_per), myCMA.round_double(myCMA.random<double>(ymin, ymax), dec_per)));
+                }
+                return ret;
+            }
+        }
+
+        bool isSystemInGoal(vector<pair<double, double>> q, vector<pair<double, double>> g, size_t numAgents)
+        {
+            for(int i = 0; i < numAgents; i++)
+            {
+                if(myCMA.euc_dis(q[i], g[i]) > eps)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        bool validState(vector<pair<double, double>> q, vector<double> radii, size_t numAgents, vector<Obstacle2D> obs)
+        {
+            for(int i = 0; i < numAgents; i++)
+            {
+                if(rToOCollision(q[i], radii[i], obs))
+                {
+                    return false;
+                }
+                for(int j = i+1; j < numAgents; j++)
+                {
+                    if(rToRCollision(q[i], q[j], radii[i], radii[j]))
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        bool rToRCollision(pair<double, double> a, pair<double, double> b, double ra, double rb)
+        {
+            return myCMA.round_double(myCMA.euc_dis(a, b),dec_per) < ra+rb ? true : false;
+        }
+
+        bool rToOCollision(pair<double, double> a, double ra, vector<Obstacle2D> obs)
+        {
+            return myCMA.checkInObj(a, ra, obs, dec_per) || myCMA.checkInObj(a,obs);
+        }
+
         /// @brief Solve a motion planning problem. Derive class and override this method
         /// @param problem Multi-agent motion planning problem
         /// @return Array of paths that are ordered corresponding to the `agent_properties` field in `problem`.
-        virtual amp::MultiAgentPath2D plan(const amp::MultiAgentProblem2D& problem) override
+        virtual MultiAgentPath2D plan(const MultiAgentProblem2D& problem) override
         {
             MultiAgentPath2D ret;
             RM.clear();
@@ -43,24 +102,86 @@ class myCentralizedMultiAgentRRT : public CentralizedMultiAgentRRT{
                 st.push_back({agent.q_init[0],agent.q_init[1]});
                 g.push_back({agent.q_goal[0],agent.q_goal[1]});
             }
+            vector<pair<double,double>> smpPt;
+            vector<pair<double,double>> qNear;
+            vector<pair<double,double>> qNew;
 
-            RM.inset(make_pair(st, map<vector<pair<double,double>>,double>()));
+            RM.insert(make_pair(st, map<vector<pair<double,double>>,double>()));
 
             bool found = false;
             bool inObj = false;
 
             double itr = 0;
-            
+
             double xMin = problem.x_min;
             double xMax = problem.x_max;
 
             double yMin = problem.y_min;
             double yMax = problem.y_max;
+
+            double tmp_dist;
             
             auto stTime = high_resolution_clock::now();
 
             while(!found && itr < n)
             {
+                smpPt = grabRandPoint(g, numAgents, xMin, xMax, yMin, yMax);
+
+                // Check collision here
+
+                for(int i = 0; i < numAgents; i++)
+                {
+                    qNear.push_back({0,0});
+                }
+                tmp_dist = INFINITY;
+                for(auto itrRm : RM)
+                {
+                    if(itrRm.first == smpPt)
+                    {
+                        continue;
+                    }
+                    if(tmp_dist > myCMA.euc_dis(itrRm.first, smpPt))
+                    {
+                        tmp_dist = myCMA.euc_dis(itrRm.first, smpPt);
+                        qNear = itrRm.first;
+                    }
+                }
+                qNew = myCMA.newPt(qNear, smpPt, numAgents, r);
+
+                
+                if(validState(qNew, radii, numAgents, obs))
+                {
+                    if(qNew == g || isSystemInGoal(qNew, g, numAgents))
+                    {
+                        found = true;
+                        qNew = g;
+                        if(RM.find(qNew) == RM.end())
+                        {
+                            RM.insert(make_pair(qNew, map<vector<pair<double,double>>,double>()));
+                        }
+                        RM[qNear][qNew] = myCMA.euc_dis(qNear, qNew);
+                    }
+                    else if(myCMA.round_double(myCMA.euc_dis(qNew, smpPt),2) <= eps)
+                    {
+                        if(validState(smpPt, radii, numAgents, obs))
+                        {
+                            qNew = smpPt;
+                            if(RM.find(qNew) == RM.end())
+                            {
+                                RM.insert(make_pair(qNew, map<vector<pair<double,double>>,double>()));
+                            }
+                            RM[qNear][qNew] = myCMA.euc_dis(qNear, qNew);
+                        }
+                    }
+                    else
+                    {
+                        if(RM.find(qNew) == RM.end())
+                        {
+                            RM.insert(make_pair(qNew, map<vector<pair<double,double>>,double>()));
+                        }
+                        RM[qNear][qNew] = myCMA.euc_dis(qNear, qNew);
+                    }                    
+                }
                 itr += 1;
             }
 
@@ -128,10 +249,11 @@ class myCentralizedMultiAgentRRT : public CentralizedMultiAgentRRT{
 
     private:
         int n;
+        int dec_per;
         double r;
         double eps;
         double p_goal;
-        int dec_per;
+        double treeSize;
         long time;
         bool valid_path;
         map< vector<pair<double,double>>, map< vector<pair<double,double>>, double> > RM;

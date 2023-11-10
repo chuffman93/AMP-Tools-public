@@ -124,11 +124,14 @@ class MyGBRRT : public GoalBiasRRT2D {
                             RM[qNear][qNew] = GBRRTU.euc_dis(qNear,qNew);
                         }
                     }
-                    if(RM.find(qNew) == RM.end())
-                    {   
-                        RM.insert( make_pair(qNew, map<pair<double,double>,double>()) );
+                    else 
+                    {
+                        if(RM.find(qNew) == RM.end())
+                        {   
+                            RM.insert( make_pair(qNew, map<pair<double,double>,double>()) );
+                        }
+                        RM[qNear][qNew] = GBRRTU.euc_dis(qNear,qNew);
                     }
-                    RM[qNear][qNew] = GBRRTU.euc_dis(qNear,qNew);
                     
                     qNear = qNew;
                     qNew = GBRRTU.newPt(qNear, sampPt, r);

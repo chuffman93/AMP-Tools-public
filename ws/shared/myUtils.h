@@ -210,12 +210,61 @@ class myUtils {
             return count & 1;
         }
 
+        bool checkInObj(pair<double, double> a, double radius, vector<Obstacle2D> obs, int dec_per)
+        {
+            
+            int count = 0;
+            line pLine;
+            pLine.p1 = Eigen::Vector2d{a.first,a.second};
+            line v;
+            double m;
+            double rad;
+            vector<Eigen::Vector2d> verts;
+            for(int i = 0; i < obs.size(); i++)
+            {
+                verts = obs[i].verticesCCW();
+                verts.push_back(verts[0]);
+                for(int wI = 0; wI < verts.size()-1; wI++)
+                {
+                    v.p1 = verts[wI];
+                    v.p2 = verts[wI+1];
+                    m = -(v.p2[0] - v.p1[0]) / (v.p2[1] - v.p1[1]);
+                    rad = atan(m);
+                    pLine.p2 = Eigen::Vector2d{round_double(a.first+radius*cos(rad),dec_per), round_double(a.second+radius*sin(rad),dec_per)};
+                    if(isInt(v,pLine)) 
+                    {
+                        if(linDir(v.p1, Eigen::Vector2d{a.first, a.second}, v.p2) == 0)
+                        {
+                            return onL(v,  Eigen::Vector2d{a.first, a.second});
+                        } 
+                        count++;
+                    }
+                }
+                if(count % 2 != 0)
+                {
+                    break;
+                }
+            }
+            return count & 1;
+        }
+
         struct MapSearchResult {
             /// @brief Set to `true` if path was found, `false` if no path exists
             bool success = false;
 
             /// @brief Sequence of nodes where `node_path.front()` must contain init node, and `node_path.back()` must contain the goal node
             std::list<pair<double,double>> node_path;
+
+            /// @brief Path cost (must equal sum of edge weights along node_path)
+            double path_cost;
+        };
+
+        struct MapSearchResultMultiAgent {
+            /// @brief Set to `true` if path was found, `false` if no path exists
+            bool success = false;
+
+            /// @brief Sequence of nodes where `node_path.front()` must contain init node, and `node_path.back()` must contain the goal node
+            std::list<vector<pair<double,double>>> node_path;
 
             /// @brief Path cost (must equal sum of edge weights along node_path)
             double path_cost;
@@ -352,9 +401,33 @@ class myUtils {
             return make_pair(round_double(a.first+step_size*cos(rad),2), round_double(a.second+step_size*sin(rad),2));
         }
 
+        vector<pair<double, double>> newPt(vector<pair<double,double>> a, vector<pair<double,double>> b, size_t numAgents, double step_size)
+        {
+            double m;
+            double rad;
+            vector<pair<double,double>> ret;
+            for(int i = 0; i < numAgents; i++)
+            {
+                m = (b[i].second - a[i].second) / (b[i].first - a[i].first);
+                rad = atan(m);
+                ret.push_back(make_pair(round_double(a[i].first+step_size*cos(rad),2), round_double(a[i].second+step_size*sin(rad),2)));
+            }
+            return ret;
+        }
+
         double euc_dis(pair<double, double> a, pair<double, double> b)
         {
             return sqrt(pow(a.first-b.first,2) + pow(a.second-b.second,2));
+        }
+
+         double euc_dis(vector<pair<double, double>> a, vector<pair<double, double>> b)
+        {
+            double sum = 0;
+            for(int i = 0; i < a.size(); i++)
+            {
+                sum += pow(a[i].first-b[i].first,2) + pow(a[i].second-b[i].second,2);
+            }
+            return sqrt(sum);
         }
 
         double euc_dis(Eigen::Vector2d a, Eigen::Vector2d b)
