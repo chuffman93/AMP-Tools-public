@@ -23,7 +23,7 @@ class myCentralizedMultiAgentRRT : public CentralizedMultiAgentRRT{
 
         vector<pair<double,double>> grabRandPoint(vector<pair<double,double>> g, size_t numAgents, double xmin, double xmax, double ymin, double ymax)
         {
-            bool grabG = (rand() % 100) <= (int)(p_goal*100);
+            bool grabG = (rand() % 100) <= (p_goal*100);
             if(grabG)
             {
                 return g;
@@ -51,6 +51,23 @@ class myCentralizedMultiAgentRRT : public CentralizedMultiAgentRRT{
             return true;
         }
 
+        vector<bool> goalsReached(vector<pair<double, double>> q, vector<pair<double, double>> g, size_t numAgents)
+        {
+            vector<bool> ret;
+            for(int i = 0; i < numAgents; i++)
+            {
+                if(myCMA.euc_dis(q[i], g[i]) > eps)
+                {
+                    ret.push_back(false);
+                }
+                else
+                {
+                    ret.push_back(true);
+                }
+            }
+            return ret;
+        }
+
         bool validState(vector<pair<double, double>> q, vector<double> radii, size_t numAgents, vector<Obstacle2D> obs)
         {
             for(int i = 0; i < numAgents; i++)
@@ -72,7 +89,7 @@ class myCentralizedMultiAgentRRT : public CentralizedMultiAgentRRT{
 
         bool rToRCollision(pair<double, double> a, pair<double, double> b, double ra, double rb)
         {
-            return myCMA.round_double(myCMA.euc_dis(a, b),dec_per) < ra+rb ? true : false;
+            return (myCMA.round_double(myCMA.euc_dis(a, b),dec_per) < ra+rb);
         }
 
         bool rToOCollision(pair<double, double> a, double ra, vector<Obstacle2D> obs)
@@ -96,11 +113,13 @@ class myCentralizedMultiAgentRRT : public CentralizedMultiAgentRRT{
             vector<double> radii;
             vector<pair<double,double>> st;
             vector<pair<double,double>> g;
+
             for(auto agent : agents)
             {
                 radii.push_back(agent.radius);
                 st.push_back({agent.q_init[0],agent.q_init[1]});
                 g.push_back({agent.q_goal[0],agent.q_goal[1]});
+
             }
             vector<pair<double,double>> smpPt;
             vector<pair<double,double>> qNear;
@@ -126,14 +145,8 @@ class myCentralizedMultiAgentRRT : public CentralizedMultiAgentRRT{
             while(!found && itr < n)
             {
                 smpPt = grabRandPoint(g, numAgents, xMin, xMax, yMin, yMax);
-
-                // Check collision here
-
-                for(int i = 0; i < numAgents; i++)
-                {
-                    qNear.push_back({0,0});
-                }
                 tmp_dist = INFINITY;
+
                 for(auto itrRm : RM)
                 {
                     if(itrRm.first == smpPt)
@@ -148,10 +161,10 @@ class myCentralizedMultiAgentRRT : public CentralizedMultiAgentRRT{
                 }
                 qNew = myCMA.newPt(qNear, smpPt, numAgents, r);
 
-                
+
                 if(validState(qNew, radii, numAgents, obs))
                 {
-                    if(qNew == g || isSystemInGoal(qNew, g, numAgents))
+                    if(isSystemInGoal(qNew, g, numAgents))
                     {
                         found = true;
                         qNew = g;
@@ -161,30 +174,35 @@ class myCentralizedMultiAgentRRT : public CentralizedMultiAgentRRT{
                         }
                         RM[qNear][qNew] = myCMA.euc_dis(qNear, qNew);
                     }
-                    else if(myCMA.round_double(myCMA.euc_dis(qNew, smpPt),2) <= eps)
-                    {
-                        if(validState(smpPt, radii, numAgents, obs))
-                        {
-                            qNew = smpPt;
-                            if(RM.find(qNew) == RM.end())
-                            {
-                                RM.insert(make_pair(qNew, map<vector<pair<double,double>>,double>()));
-                            }
-                            RM[qNear][qNew] = myCMA.euc_dis(qNear, qNew);
-                        }
-                    }
                     else
                     {
                         if(RM.find(qNew) == RM.end())
                         {
                             RM.insert(make_pair(qNew, map<vector<pair<double,double>>,double>()));
                         }
-                        RM[qNear][qNew] = myCMA.euc_dis(qNear, qNew);
-                    }                    
+                        RM[qNear][qNew] = myCMA.euc_dis(qNear, qNew); 
+                    }
+                    itr += 1; 
                 }
-                itr += 1;
+                
             }
-
+            if(!found)
+            {
+                printf("PATH NOT FOUND\n");
+            }
+            myUtils::MapSearchResultMultiAgent dijRet = myCMA.dij_search(RM, st, g);
+            if(dijRet.success)
+            {
+                ret = myCMA.pairToEigenVector(dijRet.node_path, numAgents);
+                valid_path = true;
+                ret.valid = valid_path;
+            }
+            else
+            {
+                ret = myCMA.pairToEigenVector({st,g}, numAgents);
+                valid_path = false;
+                ret.valid = valid_path;
+            }
             auto stpTime = high_resolution_clock::now();
             time = duration_cast<milliseconds>(stpTime - stTime).count();
 

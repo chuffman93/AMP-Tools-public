@@ -216,6 +216,7 @@ class myUtils {
             int count = 0;
             line pLine;
             pLine.p1 = Eigen::Vector2d{a.first,a.second};
+            Eigen::Vector2d cPt;
             line v;
             double m;
             double rad;
@@ -228,24 +229,26 @@ class myUtils {
                 {
                     v.p1 = verts[wI];
                     v.p2 = verts[wI+1];
-                    m = -(v.p2[0] - v.p1[0]) / (v.p2[1] - v.p1[1]);
+                    cPt = getClosestPoint(v.p1, v.p2, pLine.p1);
+                    m = (cPt[1] - pLine.p1[1]) / (cPt[0] - pLine.p1[0]);
                     rad = atan(m);
-                    pLine.p2 = Eigen::Vector2d{round_double(a.first+radius*cos(rad),dec_per), round_double(a.second+radius*sin(rad),dec_per)};
+                    pLine.p2 = Eigen::Vector2d{a.first+((radius+0.01)*cos(rad)), a.second+((radius+0.01)*sin(rad))};
                     if(isInt(v,pLine)) 
                     {
-                        if(linDir(v.p1, Eigen::Vector2d{a.first, a.second}, v.p2) == 0)
-                        {
-                            return onL(v,  Eigen::Vector2d{a.first, a.second});
-                        } 
-                        count++;
+                        return true;
                     }
                 }
-                if(count % 2 != 0)
-                {
-                    break;
-                }
             }
-            return count & 1;
+            return false;
+        }
+
+        Eigen::Vector2d getClosestPoint(Eigen::Vector2d v1, Eigen::Vector2d v2, Eigen::Vector2d pt)
+        {
+            Eigen::Vector2d v1v2 = v2 - v1;
+            Eigen::Vector2d v1pt = pt - v1;
+            double sq = (v1v2[0]*v1v2[0]) + (v1v2[1]*v1v2[1]);
+            double t = ((v1pt[0]*v1v2[0]) + (v1pt[1]*v1v2[1]))/sq;
+            return v1 + t*v1v2;
         }
 
         struct MapSearchResult {
@@ -369,9 +372,120 @@ class myUtils {
             return ret;
         }
 
+        MapSearchResultMultiAgent dij_search(map< vector<pair<double,double>>, map< vector<pair<double,double>>, double> > RM,
+                                vector<pair<double,double>> st, 
+                                vector<pair<double,double>> g)
+        {
+            MapSearchResultMultiAgent ret;
+
+            vector<pair<double, double>> bst;
+
+            vector<double> weights;
+            
+            typedef pair<double, vector<pair<double, double>>> nW;
+            map< vector<pair<double,double>>, double>dist;
+            map <vector<pair<double, double>>, vector<pair<double, double>>> bkPtr;
+            
+            priority_queue<nW, vector<nW>, greater<nW> > O;
+            nW tmpTp;
+            list<vector<pair<double, double>>> Ol;
+            list<vector<pair<double, double>>> C;
+            list<vector<pair<double, double>>> q;
+
+            double gn;
+            double h;
+            double f;
+
+            O.push(make_pair(0, st));
+            dist.insert({st, 0});
+            Ol.push_back(st);
+            q.push_back(st);
+
+            int itrCount = 0;
+            while(!O.empty())
+            {
+                bst = O.top().second;
+                // printf("Bst {%.2f, %.2f}\n", bst.first, bst.second);
+                O.pop();
+                Ol.remove(bst);
+                C.push_back(bst);
+
+                if (bst == g)
+                {
+                    q.push_back(g);
+                    break;
+                }
+                for(auto chld : RM[bst])
+                {
+                    if(find(C.begin(), C.end(), chld.first) != C.end())
+                    {
+                        continue;
+                    }
+
+                    if(find(Ol.begin(), Ol.end(), chld.first) == Ol.end())
+                    {
+                        gn = RM[bst][chld.first] + dist.find(bst)->second;
+                        // printf("GN = %.2f\n",gn);
+                        O.push( make_pair(gn, chld.first) );
+                        Ol.push_back(chld.first);
+                        dist.insert({chld.first, gn});
+                        bkPtr.insert({chld.first, bst});
+                    }
+                    else if((dist.find(bst)->second + RM[bst][chld.first] ) < dist.find(chld.first)->second)
+                    {
+                        gn = RM[bst][chld.first] + dist.find(bst)->second;
+                        // printf("GN = %.2f\n",gn);
+                        O.push( make_pair(gn, chld.first) );
+                        bkPtr.find(chld.first)->second = bst;
+                        dist.find(chld.first)->second = gn;
+                    }
+                }
+                itrCount += 1;
+            }
+            vector<pair<double,double>> tmp;
+            if (q.back() == g)
+            {
+                tmp = g;
+                
+                while(bkPtr.find(tmp)->second != st)
+                {
+                    auto it = q.begin();
+                    advance(it, 1);
+                    q.insert(it,bkPtr.find(tmp)->second);
+                    tmp = bkPtr.find(tmp)->second;
+                }
+                ret.node_path = q;
+                ret.success = true;
+                ret.path_cost = dist.find(g)->second;
+
+            }
+            else
+            {
+                ret.node_path = q;
+                ret.success = false;
+                ret.path_cost = -1;
+
+            }
+            // printPath(ret);
+            return ret;
+        }
+
         bool inbounds(pair<double, double> a, double xmin, double xmax, double ymin, double ymax)
         {
             return (a.first > xmin && a.first < xmax && a.second > ymin && a.second < ymax);
+        }
+
+        bool inbounds(vector<pair<double, double> > a, double xmin, double xmax, double ymin, double ymax)
+        {
+            for(auto itr : a)
+            {
+                if(!(itr.first > xmin && itr.first < xmax && itr.second > ymin && itr.second < ymax))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         void printPath(MapSearchResult a)
@@ -460,6 +574,20 @@ class myUtils {
             for(auto itr : a)
             {
                 ret.waypoints.push_back(Eigen::Vector2d{itr.first, itr.second});
+            }
+            return ret;
+        }
+
+        MultiAgentPath2D pairToEigenVector(list<vector<pair<double, double>>> a, size_t numAgents)
+        {
+            MultiAgentPath2D ret(numAgents);
+
+            for(auto itr : a)
+            {
+                for(int i = 0; i < numAgents; i++)
+                {
+                    ret.agent_paths[i].waypoints.push_back(Eigen::Vector2d{itr[i].first, itr[i].second});
+                }
             }
             return ret;
         }
