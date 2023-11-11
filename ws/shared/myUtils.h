@@ -20,7 +20,7 @@ class myUtils {
         {
             double val = ((b[1] - a[1]) * (c[0] - b[0])) 
                        - ((b[0] - a[0]) * (c[1] - b[1]));
-            if(abs(val) < 1e-3)
+            if(abs(val) < 1e-2)
             {
                 return 0;
             }
@@ -33,10 +33,10 @@ class myUtils {
 
         bool onL(line a, Eigen::Vector2d b)
         {
-            if((b[0] < max(a.p1[0], a.p2[0]) || abs(b[0]-max(a.p1[0], a.p2[0])) < 1e-3) 
-            && (b[0] > min(a.p1[0], a.p2[0]) || abs(b[0]-min(a.p1[0], a.p2[0])) < 1e-3) 
-            && (b[1] < max(a.p1[1], a.p2[1]) || abs(b[1]-max(a.p1[1], a.p2[1])) < 1e-3)
-            && (b[1] > min(a.p1[1], a.p2[1]) || abs(b[1]-min(a.p1[1], a.p2[1])) < 1e-3))
+            if((b[0] < max(a.p1[0], a.p2[0]) || abs(b[0]-max(a.p1[0], a.p2[0])) < 1e-2) 
+            && (b[0] > min(a.p1[0], a.p2[0]) || abs(b[0]-min(a.p1[0], a.p2[0])) < 1e-2) 
+            && (b[1] < max(a.p1[1], a.p2[1]) || abs(b[1]-max(a.p1[1], a.p2[1])) < 1e-2)
+            && (b[1] > min(a.p1[1], a.p2[1]) || abs(b[1]-min(a.p1[1], a.p2[1])) < 1e-2))
             {
                 return true;
             }
@@ -204,7 +204,7 @@ class myUtils {
                 }
                 if(count % 2 != 0)
                 {
-                    break;;
+                    break;
                 }
             }
             return count & 1;
@@ -230,10 +230,9 @@ class myUtils {
                     v.p1 = verts[wI];
                     v.p2 = verts[wI+1];
                     cPt = getClosestPoint(v.p1, v.p2, pLine.p1);
-                    m = (cPt[1] - pLine.p1[1]) / (cPt[0] - pLine.p1[0]);
-                    rad = atan(m);
-                    pLine.p2 = Eigen::Vector2d{a.first+((radius+0.01)*cos(rad)), a.second+((radius+0.01)*sin(rad))};
-                    if(isInt(v,pLine)) 
+                    rad = atan2((cPt[1] - pLine.p1[1]), (cPt[0] - pLine.p1[0]));
+                    pLine.p2 = Eigen::Vector2d{a.first+((radius+0.1)*cos(rad)), a.second+((radius+0.1)*sin(rad))};
+                    if(isInt(v,pLine) || (euc_dis(pLine.p1, cPt) < radius+0.1)) 
                     {
                         return true;
                     }
@@ -242,13 +241,23 @@ class myUtils {
             return false;
         }
 
-        Eigen::Vector2d getClosestPoint(Eigen::Vector2d v1, Eigen::Vector2d v2, Eigen::Vector2d pt)
+        Eigen::Vector2d getClosestPoint(Eigen::Vector2d A, Eigen::Vector2d B, Eigen::Vector2d P)
         {
-            Eigen::Vector2d v1v2 = v2 - v1;
-            Eigen::Vector2d v1pt = pt - v1;
-            double sq = (v1v2[0]*v1v2[0]) + (v1v2[1]*v1v2[1]);
-            double t = ((v1pt[0]*v1v2[0]) + (v1pt[1]*v1v2[1]))/sq;
-            return v1 + t*v1v2;
+            Eigen::Vector2d AB = B - A;
+            Eigen::Vector2d AP = P - A;
+            double sq =  (AB[0]*AB[0]) + (AB[1]*AB[1]);
+            double t  = ((AP[0]*AB[0]) + (AP[1]*AB[1]))/sq;
+            if(t < 0)
+            {
+                t = 0;
+            }
+            if(t > 1)
+            {
+                t = 1;
+            }
+
+
+            return A + (t*AB);
         }
 
         struct MapSearchResult {
@@ -267,7 +276,7 @@ class myUtils {
             bool success = false;
 
             /// @brief Sequence of nodes where `node_path.front()` must contain init node, and `node_path.back()` must contain the goal node
-            std::list<vector<pair<double,double>>> node_path;
+            std::list<vector<double>> node_path;
 
             /// @brief Path cost (must equal sum of edge weights along node_path)
             double path_cost;
@@ -372,25 +381,25 @@ class myUtils {
             return ret;
         }
 
-        MapSearchResultMultiAgent dij_search(map< vector<pair<double,double>>, map< vector<pair<double,double>>, double> > RM,
-                                vector<pair<double,double>> st, 
-                                vector<pair<double,double>> g)
+        MapSearchResultMultiAgent dij_search(map< vector<double>, map< vector<double>, double> > RM,
+                                vector<double> st, 
+                                vector<double> g)
         {
             MapSearchResultMultiAgent ret;
 
-            vector<pair<double, double>> bst;
+            vector<double> bst;
 
             vector<double> weights;
             
-            typedef pair<double, vector<pair<double, double>>> nW;
-            map< vector<pair<double,double>>, double>dist;
-            map <vector<pair<double, double>>, vector<pair<double, double>>> bkPtr;
+            typedef pair<double, vector<double>> nW;
+            map< vector<double>, double>dist;
+            map <vector<double>, vector<double>> bkPtr;
             
             priority_queue<nW, vector<nW>, greater<nW> > O;
             nW tmpTp;
-            list<vector<pair<double, double>>> Ol;
-            list<vector<pair<double, double>>> C;
-            list<vector<pair<double, double>>> q;
+            list<vector<double>> Ol;
+            list<vector<double>> C;
+            list<vector<double>> q;
 
             double gn;
             double h;
@@ -442,7 +451,7 @@ class myUtils {
                 }
                 itrCount += 1;
             }
-            vector<pair<double,double>> tmp;
+            vector<double> tmp;
             if (q.back() == g)
             {
                 tmp = g;
@@ -475,11 +484,11 @@ class myUtils {
             return (a.first > xmin && a.first < xmax && a.second > ymin && a.second < ymax);
         }
 
-        bool inbounds(vector<pair<double, double> > a, double xmin, double xmax, double ymin, double ymax)
+        bool inbounds(vector<double> a, double xmin, double xmax, double ymin, double ymax)
         {
-            for(auto itr : a)
+            for(int i = 0; i < a.size(); i+=2)
             {
-                if(!(itr.first > xmin && itr.first < xmax && itr.second > ymin && itr.second < ymax))
+                if(!(a[i] > xmin && a[i] < xmax && a[i+1] > ymin && a[i+1] < ymax))
                 {
                     return false;
                 }
@@ -515,16 +524,25 @@ class myUtils {
             return make_pair(round_double(a.first+step_size*cos(rad),2), round_double(a.second+step_size*sin(rad),2));
         }
 
-        vector<pair<double, double>> newPt(vector<pair<double,double>> a, vector<pair<double,double>> b, size_t numAgents, double step_size)
+        vector<double> newPt(vector<double> a, vector<double> b, size_t numAgents, double step_size, int dec_per)
         {
-            double m;
             double rad;
-            vector<pair<double,double>> ret;
-            for(int i = 0; i < numAgents; i++)
+            vector<double> ret;
+            double step;
+            for(int i = 0; i < numAgents*2; i+=2)
             {
-                m = (b[i].second - a[i].second) / (b[i].first - a[i].first);
-                rad = atan(m);
-                ret.push_back(make_pair(round_double(a[i].first+step_size*cos(rad),2), round_double(a[i].second+step_size*sin(rad),2)));
+                rad = atan2((b[i+1] - a[i+1]), (b[i] - a[i]));
+                if(euc_dis(make_pair(a[i],a[i+1]), make_pair(b[i],b[i+1])) < step_size)
+                {
+                    ret.push_back( b[i] );
+                    ret.push_back( b[i+1] );
+                }
+                else
+                {
+                    ret.push_back( round_double(a[i]   +(step_size*cos(rad)),dec_per) );
+                    ret.push_back( round_double(a[i+1] +(step_size*sin(rad)),dec_per) );
+                }
+                
             }
             return ret;
         }
@@ -534,14 +552,14 @@ class myUtils {
             return sqrt(pow(a.first-b.first,2) + pow(a.second-b.second,2));
         }
 
-         double euc_dis(vector<pair<double, double>> a, vector<pair<double, double>> b)
+         double mink_dis(vector<double> a, vector<double> b, double p)
         {
             double sum = 0;
             for(int i = 0; i < a.size(); i++)
             {
-                sum += pow(a[i].first-b[i].first,2) + pow(a[i].second-b[i].second,2);
+                sum += pow(abs(a[i]-b[i]),p);
             }
-            return sqrt(sum);
+            return pow(sum,1/p);
         }
 
         double euc_dis(Eigen::Vector2d a, Eigen::Vector2d b)
@@ -578,15 +596,25 @@ class myUtils {
             return ret;
         }
 
-        MultiAgentPath2D pairToEigenVector(list<vector<pair<double, double>>> a, size_t numAgents)
+        Path2D pairToEigenVector(list<vector<double>> a)
+        {
+            Path2D ret;
+            for(auto itr : a)
+            {
+                ret.waypoints.push_back(Eigen::Vector2d{itr[0], itr[1]});
+            }
+            return ret;
+        }
+
+        MultiAgentPath2D pairToEigenVector(list<vector<double>> a, size_t numAgents)
         {
             MultiAgentPath2D ret(numAgents);
 
             for(auto itr : a)
             {
-                for(int i = 0; i < numAgents; i++)
+                for(int i = 0; i < numAgents*2; i+=2)
                 {
-                    ret.agent_paths[i].waypoints.push_back(Eigen::Vector2d{itr[i].first, itr[i].second});
+                    ret.agent_paths[(int)(i/2)].waypoints.push_back(Eigen::Vector2d{itr[i], itr[i+1]});
                 }
             }
             return ret;
