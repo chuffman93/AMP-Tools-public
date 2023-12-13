@@ -30,6 +30,29 @@ class MyGBRRT : public GoalBiasRRT2D {
             return grabG ? g : make_pair(GBRRTU.round_double(GBRRTU.random<double>(xmin, xmax), dec_per), GBRRTU.round_double(GBRRTU.random<double>(ymin, ymax), dec_per));
         }
 
+        virtual amp::ManipulatorTrajectory2Link plan(const LinkManipulator2D& link_manipulator_agent, const amp::Problem2D& problem) override
+        {
+            ASSERT(link_manipulator_agent.nLinks() == 2, "Manipulator must have two links");
+
+            ManipulatorState init_state = link_manipulator_agent.getConfigurationFromIK(problem.q_init);
+
+            ManipulatorState goal_state = link_manipulator_agent.getConfigurationFromIK(problem.q_goal);
+
+            unique_ptr<GridCSpace2D> grid_cspace = m_c_space_constructor->construct(link_manipulator_agent, problem);
+
+            return planInCSpace(convert(init_state), convert(goal_state), *grid_cspace);
+        }
+   
+
+        virtual amp::Path2D planInCSpace(const Eigen::Vector2d& q_init, const Eigen::Vector2d& q_goal, const amp::GridCSpace2D& grid_cspace) override
+        {
+            Path2D ret;
+
+            ret.waypoints.push_back(init);
+            ret.waypoints.push_back(goal);
+            return ret;
+        }
+
         /// @brief Solve a motion planning problem. Create a derived class and override this method
         virtual amp::Path2D plan(const amp::Problem2D& problem) override 
         {
