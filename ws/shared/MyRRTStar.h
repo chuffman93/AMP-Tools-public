@@ -15,10 +15,10 @@ class MyRRTStar {
         MyRRTStar()
         {
             n = 4000;
-            r = 1.0;
+            r = 0.5;
             R = 2.0;
             eps = 0.25;
-            p_goal = 0.00;
+            p_goal = 0.05;
             dec_per = 2;
             smooth = false;
             dis = 0.1;
@@ -142,6 +142,31 @@ class MyRRTStar {
             return grabG ? g : make_pair(rrtStarUtils.round_double(rrtStarUtils.random<double>(xmin, xmax), dec_per), rrtStarUtils.round_double(rrtStarUtils.random<double>(ymin, ymax), dec_per));
         }
 
+        bool checkCollision(pair<double, double> a, pair<double, double> b, const amp::GridCSpace2D& grid_cspace)
+        {
+            pair<size_t, size_t> aCell = grid_cspace.getCellFromPoint(a.first, a.second);
+            pair<size_t, size_t> tmpCell;
+            pair<double, double> tmpPoint;
+            set<pair<size_t,size_t>> visitedCells;
+            Eigen::Vector2d tmpVec;
+            tmpPoint = rrtStarUtils.newPt(b,a,dis/4,true);
+            tmpVec = correctPosition(tmpPoint);
+            tmpPoint = make_pair(tmpVec[0], tmpVec[1]);
+            tmpCell = grid_cspace.getCellFromPoint(tmpPoint.first, tmpPoint.second);
+            while(!(tmpCell.first == aCell.first) && !(tmpCell.second == aCell.second))
+            {
+                if(grid_cspace.operator()(tmpCell.first, tmpCell.second))
+                {
+                    return true;
+                }
+                tmpPoint = rrtStarUtils.newPt(tmpPoint,a,dis/4,true);
+                tmpVec = correctPosition(tmpPoint);
+                tmpPoint = make_pair(tmpVec[0], tmpVec[1]);
+                tmpCell = grid_cspace.getCellFromPoint(tmpPoint.first, tmpPoint.second);
+            }
+            return false;
+        }
+
         pair<pair<double,double>, list<pair<double, double>>> findNeighbors(map<pair<double,double>, double> Cost, pair<double, double> q, pair<double, double> st, vector<Polygon> obs)
         {
             list<pair<double,double>> retList;
@@ -189,7 +214,7 @@ class MyRRTStar {
             for(auto itr : RM)
             {
                 tmpDis = rrtStarUtils.euc_disWrapped(itr.first, q, xMin, xMax, yMin, yMax);
-                if((tmpDis < 0.2))
+                if((tmpDis < R) && !checkCollision(itr.first, q, grid_cspace))
                 {
                     tmpCost = Cost[itr.first] + tmpDis;
                     if(minDis > tmpCost)
@@ -306,7 +331,7 @@ class MyRRTStar {
             auto stTime = high_resolution_clock::now(); 
             while(!(attempts > 2) && !found)
             {    
-                while(!found && itr < n)
+                while(itr < n)
                 {
                     sampPt = grabRandPoint(g, xMin, xMax, yMin, yMax);
                     tmpCell = grid_cspace.getCellFromPoint(sampPt.first, sampPt.second);
@@ -314,6 +339,7 @@ class MyRRTStar {
                     {
                         continue;
                     }
+                    sampPt = getPointFromCell(dis,tmpCell,xMin,yMin);
                     qNear = make_pair(0,0);
                     tmp_dist = INFINITY;
                     for(auto itr : RM)
@@ -321,25 +347,27 @@ class MyRRTStar {
                         if (itr.first == sampPt)
                             continue;
 
-                        if (tmp_dist > rrtStarUtils.euc_disWrapped(itr.first, sampPt, xMin, xMax, yMin, yMax))
+                        if (tmp_dist > rrtStarUtils.euc_dis(itr.first, sampPt))
                         {
-                            tmp_dist = rrtStarUtils.euc_disWrapped(itr.first, sampPt, xMin, xMax, yMin, yMax);
+                            tmp_dist = rrtStarUtils.euc_dis(itr.first, sampPt);
                             qNear = itr.first;
                         }
                     }
-                    qNew = rrtStarUtils.newPtWrapped(qNear, sampPt, dis*2, first, xMin, xMax, yMin, yMax);
+                    qNew = rrtStarUtils.newPt(qNear, sampPt, dis*2, first);
                     tmpVec = correctPosition(qNew);
                     qNew = make_pair(tmpVec[0], tmpVec[1]);
                     tmpCell = grid_cspace.getCellFromPoint(qNew.first, qNew.second);
+                    qNew = getPointFromCell(dis,tmpCell,xMin,yMin);
                     
-                    if(!grid_cspace.operator()(tmpCell.first, tmpCell.second))
+                    if(!grid_cspace.operator()(tmpCell.first, tmpCell.second) && !checkCollision(sampPt, qNew, grid_cspace))
                     {
-                        if(qNew == g || (tmpCell.first == gCell.first && tmpCell.second == gCell.second) || rrtStarUtils.round_double(rrtStarUtils.euc_dis(qNew,g),2) <= eps)
+                        if(qNew == g || (tmpCell.first == gCell.first && tmpCell.second == gCell.second))
                         {
+                            found = true;
                             qNew = g;
                         }
                         bestNeighbors = findNeighbors(costMap, qNew, grid_cspace);
-                        RM[bestNeighbors.first][qNew] = rrtStarUtils.euc_disWrapped(bestNeighbors.first,qNew,  xMin, xMax, yMin, yMax);
+                        RM[bestNeighbors.first][qNew] = rrtStarUtils.euc_dis(bestNeighbors.first, qNew);
                         vistedCells.insert(tmpCell);
                         if(RM.find(qNew) == RM.end())
                         {   
@@ -348,13 +376,13 @@ class MyRRTStar {
                         }
                         for(auto x : bestNeighbors.second)
                         {
-                            if(costMap[x] > costMap[qNew] + rrtStarUtils.euc_disWrapped(qNew,x, xMin, xMax, yMin, yMax))
+                            if(costMap[x] > costMap[qNew] + rrtStarUtils.euc_dis(qNew, x) && !checkCollision(x,qNew,grid_cspace))
                             {
                                 for(auto itr: RM)
                                 {
                                     RM[itr.first].erase(x);
                                 }
-                                RM[qNew][x] = rrtStarUtils.euc_disWrapped(qNew,x, xMin, xMax, yMin, yMax);
+                                RM[qNew][x] = rrtStarUtils.euc_dis(qNew,x);
                                 costMap[x] = costMap[qNew]+RM[qNew][x];
                             }
                         }
@@ -808,6 +836,11 @@ class MyRRTStar {
         int getItr()
         {
             return finalItr;
+        }
+
+        void setNeighbor(double a)
+        {
+            R = a;
         }
 
         virtual ~MyRRTStar() {}

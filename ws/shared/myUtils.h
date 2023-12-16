@@ -569,9 +569,20 @@ class myUtils {
         {
             double rad;
             double m = (b.second - a.second) / (b.first - a.first);
+            double negCheck;
             if(first)
             {
                 rad = atan2((b.second - a.second), (b.first - a.first));
+                if(b.second == a.second)
+                {
+                    negCheck = (b.first > a.first) ? -1.0 : 1.0;
+                    return make_pair(round_double(a.first+(negCheck*step_size),2), a.second);
+                }
+                if(b.first == a.first)
+                {
+                    negCheck = (b.second > a.second) ? -1.0 : 1.0;
+                    return make_pair(a.first, round_double(a.second+(negCheck*step_size),2));
+                }
             }
             else
             {

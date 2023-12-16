@@ -157,11 +157,25 @@ int main(int argc, char** argv)
         }
         // 2-Link Manipulator Workspace
         if(!TODO){
+            rrt.setSampleSize(5000);
+            rrt.setNeighbor(0.5);
             Path2D Path1 = rrt.plan(man, linkMan1);
             HW6::checkLinkManipulatorPlan(Path1, man, linkMan1);
             GridCSpace2D * p1 = rrt.construct(man, linkMan1).release();
             Visualizer::makeFigure(linkMan1, man, Path1);
             Visualizer::makeFigure(*p1, Path1);
+
+            Path2D Path2 = rrt.plan(man, linkMan2);
+            HW6::checkLinkManipulatorPlan(Path2, man, linkMan2);
+            GridCSpace2D * p2 = rrt.construct(man, linkMan2).release();
+            Visualizer::makeFigure(linkMan2, man, Path2);
+            Visualizer::makeFigure(*p2, Path2);
+
+            Path2D Path3 = rrt.plan(man, linkMan3);
+            HW6::checkLinkManipulatorPlan(Path3, man, linkMan3);
+            GridCSpace2D * p3 = rrt.construct(man, linkMan3).release();
+            Visualizer::makeFigure(linkMan3, man, Path3);
+            Visualizer::makeFigure(*p3, Path3);
 
 
             Visualizer::showFigures();
@@ -193,8 +207,12 @@ int main(int argc, char** argv)
         }
         // Benchmarking
         if(TODO){
+            // rrt.setSampleSize(4000);
+            // rrt.setNeighbor(2.0);
             // rrt.benchMarkAlgo(200, false, simpProbs, wsSp);
-            
+            rrt.setSampleSize(5000);
+            rrt.setNeighbor(0.5);
+            rrt.benchMarkAlgo(200, false, linkProbs, man, wsLm);
             // maTimes.clear();
             // maDist.clear();
             // for(auto prob : mAProbs)
