@@ -49,6 +49,21 @@ int main(int argc, char** argv)
     list<vector<double>> maTimes;
     list<vector<double>> maDist;
 
+    if(!TODO)
+    {
+        ManipulatorTrajectory2Link linkArm;
+        linkArm.waypoints.push_back(Eigen::Vector2d{3.14,0.0});
+        linkArm.waypoints.push_back(Eigen::Vector2d{0.0,0.0});
+        Visualizer::makeFigure(simple1);
+        Visualizer::makeFigure(simple2);
+        Visualizer::makeFigure(simple3);
+        Visualizer::makeFigure(linkMan1, man, linkArm);
+        Visualizer::makeFigure(linkMan2, man, linkArm);
+        Visualizer::makeFigure(linkMan3, man, linkArm);
+        Visualizer::makeFigure(multi4);
+        Visualizer::showFigures();
+    }
+
     // GBRRT
     if(!TODO){
         MyGBRRT gbrrt;
@@ -136,7 +151,7 @@ int main(int argc, char** argv)
     }
 
     // RRT*
-    if(TODO){
+    if(!TODO){
         MyRRTStar rrt;
         myDecentralizedMultiAgentRRT rrtMA;
         // Simple Workspace
