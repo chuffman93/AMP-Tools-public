@@ -18,7 +18,7 @@ class MyRRTStar {
             r = 0.5;
             R = 2.0;
             eps = 0.25;
-            p_goal = 0.05;
+            p_goal = 0.00;
             dec_per = 2;
             smooth = false;
             dis = 0.1;
