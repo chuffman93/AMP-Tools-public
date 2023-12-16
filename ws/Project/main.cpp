@@ -206,24 +206,24 @@ int main(int argc, char** argv)
             Visualizer::showFigures();
         }
         // Benchmarking
-        if(TODO){
-            // rrt.setSampleSize(4000);
-            // rrt.setNeighbor(2.0);
-            // rrt.benchMarkAlgo(200, false, simpProbs, wsSp);
+        if(!TODO){
+            rrt.setSampleSize(4000);
+            rrt.setNeighbor(2.0);
+            rrt.benchMarkAlgo(200, false, simpProbs, wsSp);
             rrt.setSampleSize(5000);
             rrt.setNeighbor(0.5);
             rrt.benchMarkAlgo(200, false, linkProbs, man, wsLm);
-            // maTimes.clear();
-            // maDist.clear();
-            // for(auto prob : mAProbs)
-            // {
-            //     tmpPair = rrtMA.benchMarkAlgoSt(200, prob);
-            //     maTimes.push_back(get<1>(tmpPair));
-            //     maDist.push_back(get<2>(tmpPair));
-            // }
-            // Visualizer::makeBoxPlot(maTimes, wsMa, "Computation Time for RRT*", "Environments", "Time [ms]");
-            // Visualizer::makeBoxPlot(maDist, wsMa, "Total Distance for RRT*", "Environments", "Distance [Units]");
-            // Visualizer::showFigures();
+            maTimes.clear();
+            maDist.clear();
+            for(auto prob : mAProbs)
+            {
+                tmpPair = rrtMA.benchMarkAlgoSt(200, prob);
+                maTimes.push_back(get<1>(tmpPair));
+                maDist.push_back(get<2>(tmpPair));
+            }
+            Visualizer::makeBoxPlot(maTimes, wsMa, "Computation Time for RRT*", "Environments", "Time [ms]");
+            Visualizer::makeBoxPlot(maDist, wsMa, "Total Distance for RRT*", "Environments", "Distance [Units]");
+            Visualizer::showFigures();
         }
     }
 
