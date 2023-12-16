@@ -44,8 +44,8 @@ MyLinkManipulator::linkerState MyLinkManipulator::FK(vector<double> lengths, Man
 
 MyLinkManipulator::linkerState MyLinkManipulator::IK(vector<double> lengths, Eigen::Vector2d target) const
 {
-    int max_itr = 5000;
-    double err = 1e-12;
+    int max_itr = 10000;
+    double err = 1e-6;
 
     bool solved = false;
 
@@ -70,7 +70,7 @@ MyLinkManipulator::linkerState MyLinkManipulator::IK(vector<double> lengths, Eig
 
     for(int i = 0; i < lengths.size(); i++)
     {
-        Ang[i] = 0.1;
+        Ang[i] = 0.0;
     }
     
 
@@ -115,11 +115,11 @@ MyLinkManipulator::linkerState MyLinkManipulator::IK(vector<double> lengths, Eig
                 
                 rotAng = acos(max(-1.0, min(1.0,cosRotAng)));
 
-                // if(abs(rotAng) < 1e-5)
-                // {
-                //     printf("Moving slightly\n");
-                //     rotAng = 0.0001;
-                // }
+                if(abs(rotAng) < 1e-5)
+                {
+                    // printf("Moving slightly\n");
+                    rotAng = 0.0001;
+                }
 
                 if(sinRotAng < 0.0)
                 {

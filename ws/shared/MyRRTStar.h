@@ -1,36 +1,27 @@
 #include <queue>
 #include <chrono>
+#include <algorithm>
 
 #ifndef  MYUTILS_H
 #include "myUtils.h"
 #endif
-#include "AMPCore.h"
-#include "hw/HW7.h"
 
 using namespace amp;
 using namespace std;
 using namespace chrono;
 
-myUtils gbrrtUtilstils;
-
-/// @brief Derive this class and implement your algorithm in the `plan` method. 
-class MyGBRRT : public GoalBiasRRT2D {
+class MyRRTStar {
     public:
-        MyGBRRT()
+        MyRRTStar()
         {
-            n = 7500;
-            r = 0.5;
+            n = 4000;
+            r = 1.0;
+            R = 2.0;
             eps = 0.25;
-            p_goal = 0.05;
+            p_goal = 0.00;
             dec_per = 2;
             smooth = false;
             dis = 0.1;
-        }
-
-        pair<double, double> grabRandPoint(pair<double, double> g, double xmin, double xmax, double ymin, double ymax)
-        {
-            bool grabG = (rand() % 100) <= (int)(p_goal*100);
-            return grabG ? g : make_pair(gbrrtUtils.round_double(gbrrtUtils.random<double>(xmin, xmax), dec_per), gbrrtUtils.round_double(gbrrtUtils.random<double>(ymin, ymax), dec_per));
         }
 
         ManipulatorTrajectory2Link plan(const LinkManipulator2D& link_manipulator_agent, const amp::Problem2D& problem) 
@@ -88,7 +79,7 @@ class MyGBRRT : public GoalBiasRRT2D {
                         {
                             vector<Eigen::Vector2d> verts = obs[k].verticesCCW();
                             verts.push_back(verts[0]); 
-                            if(gbrrtUtilstils.checkInObj(links, verts))
+                            if(rrtStarUtils.checkInObj(links, verts))
                             {
                                 ret->operator()(tmp.first, tmp.second) = true;
                                 break;
@@ -124,7 +115,7 @@ class MyGBRRT : public GoalBiasRRT2D {
                         {
                             vector<Eigen::Vector2d> verts = obs[k].verticesCCW();
                             verts.push_back(verts[0]); 
-                            if(gbrrtUtilstils.checkInObj(links, verts))
+                            if(rrtStarUtils.checkInObj(links, verts))
                             {
                                 ret->operator()(tmp.first, tmp.second) = true;
                                 break;
@@ -144,6 +135,73 @@ class MyGBRRT : public GoalBiasRRT2D {
                              ((yMin+(this->dis*cell.second)) + (yMin+(this->dis*(cell.second+1))))/2);
         }
    
+
+        pair<double, double> grabRandPoint(pair<double, double> g, double xmin, double xmax, double ymin, double ymax)
+        {
+            bool grabG = (rand() % 100) <= (int)(p_goal*100);
+            return grabG ? g : make_pair(rrtStarUtils.round_double(rrtStarUtils.random<double>(xmin, xmax), dec_per), rrtStarUtils.round_double(rrtStarUtils.random<double>(ymin, ymax), dec_per));
+        }
+
+        pair<pair<double,double>, list<pair<double, double>>> findNeighbors(map<pair<double,double>, double> Cost, pair<double, double> q, pair<double, double> st, vector<Polygon> obs)
+        {
+            list<pair<double,double>> retList;
+            pair<double,double> retBest;
+
+            double minDis = INFINITY;
+            double tmpDis;
+            double tmpCost;
+
+            for(auto itr : RM)
+            {
+                tmpDis = rrtStarUtils.euc_dis(itr.first,q);
+                if((tmpDis < R) && !rrtStarUtils.checkInObj(itr.first, q, obs))
+                {
+                    tmpCost = Cost[itr.first] + tmpDis;
+                    if(minDis > tmpCost)
+                    {
+                        minDis = tmpCost;
+                        retBest = itr.first;
+                    }
+                    retList.push_back(itr.first);
+                }
+            }
+            return make_pair(retBest, retList);
+        }
+
+        pair<pair<double,double>, list<pair<double, double>>> findNeighbors(map<pair<double,double>, double> Cost, pair<double, double> q, const amp::GridCSpace2D& grid_cspace)
+        {
+            list<pair<double,double>> retList;
+            pair<double,double> retBest;
+
+            double minDis = INFINITY;
+            double tmpDis;
+            double tmpCost;
+
+            pair<double,double> x0 = grid_cspace.x0Bounds();
+            pair<double,double> x1 = grid_cspace.x1Bounds();
+
+            double xMin = x0.first;
+            double xMax = x0.second;
+
+            double yMin = x1.first;
+            double yMax = x1.second;  
+
+            for(auto itr : RM)
+            {
+                tmpDis = rrtStarUtils.euc_disWrapped(itr.first, q, xMin, xMax, yMin, yMax);
+                if((tmpDis < 0.2))
+                {
+                    tmpCost = Cost[itr.first] + tmpDis;
+                    if(minDis > tmpCost)
+                    {
+                        minDis = tmpCost;
+                        retBest = itr.first;
+                    }
+                    retList.push_back(itr.first);
+                }
+            }
+            return make_pair(retBest, retList);
+        }
 
         Path2D planInCSpace(const Eigen::Vector2d& q_init, const Eigen::Vector2d& q_goal, const amp::GridCSpace2D& grid_cspace) 
         {
@@ -216,8 +274,10 @@ class MyGBRRT : public GoalBiasRRT2D {
 
             pair<double,double> x0 = grid_cspace.x0Bounds();
             pair<double,double> x1 = grid_cspace.x1Bounds();
+            map<pair<double, double>, double> costMap;
 
             RM.insert( make_pair(st, map<pair<double,double>,double>()) );
+            costMap.insert(make_pair(st, 0.0));
 
             bool found = false;
 
@@ -235,9 +295,13 @@ class MyGBRRT : public GoalBiasRRT2D {
             double yMin = x1.first;
             double yMax = x1.second;  
             Eigen::Vector2d tmpVec;
+            set<pair<double,double>> vistedCells;
 
             bool first = true;
             int attempts = 1;
+
+            pair<pair<double,double>, list<pair<double, double>>> bestNeighbors;
+            double qNewCost;
 
             auto stTime = high_resolution_clock::now(); 
             while(!(attempts > 2) && !found)
@@ -250,7 +314,6 @@ class MyGBRRT : public GoalBiasRRT2D {
                     {
                         continue;
                     }
-                    sampPt = getPointFromCell(dis,tmpCell,xMin,yMin);
                     qNear = make_pair(0,0);
                     tmp_dist = INFINITY;
                     for(auto itr : RM)
@@ -258,49 +321,51 @@ class MyGBRRT : public GoalBiasRRT2D {
                         if (itr.first == sampPt)
                             continue;
 
-                        if (tmp_dist > gbrrtUtils.euc_dis(itr.first, sampPt))
+                        if (tmp_dist > rrtStarUtils.euc_disWrapped(itr.first, sampPt, xMin, xMax, yMin, yMax))
                         {
-                            tmp_dist = gbrrtUtils.euc_dis(itr.first, sampPt);
+                            tmp_dist = rrtStarUtils.euc_disWrapped(itr.first, sampPt, xMin, xMax, yMin, yMax);
                             qNear = itr.first;
                         }
                     }
-                    qNew = gbrrtUtils.newPt(qNear, sampPt, dis*2, first);
+                    qNew = rrtStarUtils.newPtWrapped(qNear, sampPt, dis*2, first, xMin, xMax, yMin, yMax);
                     tmpVec = correctPosition(qNew);
                     qNew = make_pair(tmpVec[0], tmpVec[1]);
                     tmpCell = grid_cspace.getCellFromPoint(qNew.first, qNew.second);
-                    qNew = getPointFromCell(dis,tmpCell,xMin,yMin);
                     
                     if(!grid_cspace.operator()(tmpCell.first, tmpCell.second))
                     {
-                        if(qNew == g || (tmpCell.first == gCell.first && tmpCell.second == gCell.second))
+                        if(qNew == g || (tmpCell.first == gCell.first && tmpCell.second == gCell.second) || rrtStarUtils.round_double(rrtStarUtils.euc_dis(qNew,g),2) <= eps)
                         {
-                            found = true;
                             qNew = g;
-                            if(RM.find(qNew) == RM.end())
-                            {   
-                                RM.insert( make_pair(qNew, map<pair<double,double>,double>()) );
-                            }
-                            RM[qNear][qNew] = gbrrtUtils.euc_dis(qNear,qNew);
                         }
-                        else 
+                        bestNeighbors = findNeighbors(costMap, qNew, grid_cspace);
+                        RM[bestNeighbors.first][qNew] = rrtStarUtils.euc_disWrapped(bestNeighbors.first,qNew,  xMin, xMax, yMin, yMax);
+                        vistedCells.insert(tmpCell);
+                        if(RM.find(qNew) == RM.end())
+                        {   
+                            RM.insert( make_pair(qNew, map<pair<double,double>,double>()) );
+                            costMap.insert(make_pair(qNew, costMap[bestNeighbors.first]+RM[bestNeighbors.first][qNew]));
+                        }
+                        for(auto x : bestNeighbors.second)
                         {
-                            if(RM.find(qNew) == RM.end())
-                            {   
-                                RM.insert( make_pair(qNew, map<pair<double,double>,double>()) );
+                            if(costMap[x] > costMap[qNew] + rrtStarUtils.euc_disWrapped(qNew,x, xMin, xMax, yMin, yMax))
+                            {
+                                for(auto itr: RM)
+                                {
+                                    RM[itr.first].erase(x);
+                                }
+                                RM[qNew][x] = rrtStarUtils.euc_disWrapped(qNew,x, xMin, xMax, yMin, yMax);
+                                costMap[x] = costMap[qNew]+RM[qNew][x];
                             }
-                            RM[qNear][qNew] = gbrrtUtils.euc_dis(qNear,qNew);
                         }
-                        
-                        qNear = qNew;
-                        qNew = gbrrtUtils.newPt(qNear, sampPt, dis, first);
-                        tmpVec = correctPosition(qNew);
-                        qNew = make_pair(tmpVec[0], tmpVec[1]);
-                        tmpCell = grid_cspace.getCellFromPoint(qNew.first, qNew.second);
-                        qNew = getPointFromCell(dis,tmpCell,xMin,yMin);
+                    }
+                    else
+                    {
+                        continue;
                     }
                     itr+=1;
                 }
-                myUtils::MapSearchResult dijRet = gbrrtUtils.dij_search(RM, st, g);
+                myUtils::MapSearchResult dijRet = rrtStarUtils.dij_search(RM, st, g);
                 
                 if(smooth && dijRet.success)
                 {
@@ -321,24 +386,29 @@ class MyGBRRT : public GoalBiasRRT2D {
                         }
                     }
                     smoothPath.push_back(dijRet.node_path.back());
-                    ret = gbrrtUtils.pairToEigenVector(smoothPath);
+                    ret = rrtStarUtils.pairToEigenVector(smoothPath);
                     valid_path = true;
                     // printf("Smoothed ");
-                    // gbrrtUtils.printPath(ret);
+                    // rrtStarUtils.printPath(ret);
                 }
                 else if(dijRet.success)
                 {
-                    ret = gbrrtUtils.pairToEigenVector(dijRet.node_path);
+                    ret = rrtStarUtils.pairToEigenVector(dijRet.node_path);
                     valid_path = true;
                 }
                 else
                 {
                     printf("No Valid Path Found\n");
-                    ret = gbrrtUtils.pairToEigenVector({st, g});
+                    ret = rrtStarUtils.pairToEigenVector({st, g});
                     valid_path = false;
                     itr = 0;
                     attempts++;
                     first = !first;
+                    vistedCells.clear();
+                    RM.clear();
+                    costMap.clear();
+                    RM.insert( make_pair(st, map<pair<double,double>,double>()) );
+                    costMap.insert(make_pair(st, 0.0));
                 }
             }
             finalItr = itr;
@@ -398,7 +468,7 @@ class MyGBRRT : public GoalBiasRRT2D {
         }
 
         /// @brief Solve a motion planning problem. Create a derived class and override this method
-        virtual amp::Path2D plan(const amp::Problem2D& problem) override 
+        amp::Path2D plan(const amp::Problem2D& problem)  
         {
             Path2D ret;
             RM.clear();
@@ -407,9 +477,12 @@ class MyGBRRT : public GoalBiasRRT2D {
             pair<double, double> sampPt;
             pair<double, double> qNear;
             pair<double, double> qNew;
+            map<pair<double, double>, double> costMap;
             double tmp_dist;
 
             RM.insert( make_pair(st, map<pair<double,double>,double>()) );
+            costMap.insert(make_pair(st, 0.0));
+
 
             vector<Obstacle2D> obs = problem.obstacles;
             vector<Eigen::Vector2d> verts; 
@@ -431,6 +504,8 @@ class MyGBRRT : public GoalBiasRRT2D {
             double yMin = problem.y_min;
             double yMax = problem.y_max;
 
+            pair<pair<double,double>, list<pair<double, double>>> bestNeighbors;
+            double qNewCost;
 
             auto stTime = high_resolution_clock::now();
             while(!found && itr < n)
@@ -440,7 +515,7 @@ class MyGBRRT : public GoalBiasRRT2D {
                 {
                     verts = obj.verticesCCW();
                     verts.push_back(verts[0]);
-                    if(gbrrtUtils.checkInObj(Eigen::Vector2d{sampPt.first, sampPt.second}, verts))
+                    if(rrtStarUtils.checkInObj(Eigen::Vector2d{sampPt.first, sampPt.second}, verts))
                     {
                         inObj = true;
                         break;
@@ -459,53 +534,47 @@ class MyGBRRT : public GoalBiasRRT2D {
                     if (itr.first == sampPt)
                         continue;
 
-                    if (tmp_dist > gbrrtUtils.euc_dis(itr.first, sampPt))
+                    if (tmp_dist > rrtStarUtils.euc_dis(itr.first, sampPt))
                     {
-                        tmp_dist = gbrrtUtils.euc_dis(itr.first, sampPt);
+                        tmp_dist = rrtStarUtils.euc_dis(itr.first, sampPt);
                         qNear = itr.first;
                     }
                 }
-                qNew = gbrrtUtils.newPt(qNear, sampPt, r, true);
+                qNew = rrtStarUtils.newPt(qNear, sampPt, r, true);
                 
-                if(!gbrrtUtils.checkInObj(qNew,obs) && !gbrrtUtils.checkInObj(qNear, qNew, obs) && gbrrtUtils.inbounds(qNew, xMin, xMax, yMin, yMax))
+                if(!rrtStarUtils.checkInObj(qNew,obs) && !rrtStarUtils.checkInObj(qNear, qNew, obs) && rrtStarUtils.inbounds(qNew, xMin, xMax, yMin, yMax))
                 {
-                    if(qNew == g || gbrrtUtils.round_double(gbrrtUtils.euc_dis(qNew,g),2) <= eps)
+                    if(rrtStarUtils.round_double(rrtStarUtils.euc_dis(qNew,g),2) <= eps)
                     {
-                        found = true;
                         qNew = g;
-                        if(RM.find(qNew) == RM.end())
-                        {   
-                            RM.insert( make_pair(qNew, map<pair<double,double>,double>()) );
-                        }
-                        RM[qNear][qNew] = gbrrtUtils.euc_dis(qNear,qNew);
                     }
-                    else if(gbrrtUtils.round_double(gbrrtUtils.euc_dis(qNew,sampPt),2) <= eps)
+                    bestNeighbors = findNeighbors(costMap,qNew,st,obs);
+                    RM[bestNeighbors.first][qNew] = rrtStarUtils.euc_dis(bestNeighbors.first,qNew);
+                    if(RM.find(qNew) == RM.end())
+                    {   
+                        RM.insert( make_pair(qNew, map<pair<double,double>,double>()) );
+                        costMap.insert(make_pair(qNew, costMap[bestNeighbors.first]+RM[bestNeighbors.first][qNew]));
+                    }
+                    for(auto x : bestNeighbors.second)
                     {
-                        if(!gbrrtUtils.checkInObj(qNew, sampPt, obs))
+                        if(costMap[x] > costMap[qNew] + rrtStarUtils.euc_dis(qNew,x))
                         {
-                            qNew = sampPt;
-                            if(RM.find(qNew) == RM.end())
-                            {   
-                                RM.insert( make_pair(qNew, map<pair<double,double>,double>()) );
+                            for(auto itr: RM)
+                            {
+                                RM[itr.first].erase(x);
                             }
-                            RM[qNear][qNew] = gbrrtUtils.euc_dis(qNear,qNew);
+                            RM[qNew][x] = rrtStarUtils.euc_dis(qNew,x);
+                            costMap[x] = costMap[qNew]+RM[qNew][x];
                         }
                     }
-                    else 
-                    {
-                        if(RM.find(qNew) == RM.end())
-                        {   
-                            RM.insert( make_pair(qNew, map<pair<double,double>,double>()) );
-                        }
-                        RM[qNear][qNew] = gbrrtUtils.euc_dis(qNear,qNew);
-                    }
-                    
-                    qNear = qNew;
-                    qNew = gbrrtUtils.newPt(qNear, sampPt, r, true);
+                }
+                else
+                {
+                    continue;
                 }
                 itr+=1;
             }
-            myUtils::MapSearchResult dijRet = gbrrtUtils.dij_search(RM, st, g);
+            myUtils::MapSearchResult dijRet = rrtStarUtils.dij_search(RM, st, g);
             
             if(smooth && dijRet.success)
             {
@@ -514,7 +583,7 @@ class MyGBRRT : public GoalBiasRRT2D {
                 prev = smoothPath.back();
                 for(auto pt : dijRet.node_path)
                 {
-                    if(!gbrrtUtils.checkInObj(smoothPath.back(), pt, obs))
+                    if(!rrtStarUtils.checkInObj(smoothPath.back(), pt, obs))
                     {
                         prev = pt;
                         continue;
@@ -525,25 +594,25 @@ class MyGBRRT : public GoalBiasRRT2D {
                     }
                 }
                 smoothPath.push_back(dijRet.node_path.back());
-                ret = gbrrtUtils.pairToEigenVector(smoothPath);
+                ret = rrtStarUtils.pairToEigenVector(smoothPath);
                 valid_path = true;
                 // printf("Smoothed ");
-                // gbrrtUtils.printPath(ret);
+                // rrtStarUtils.printPath(ret);
             }
             else if(dijRet.success)
             {
-                ret = gbrrtUtils.pairToEigenVector(dijRet.node_path);
+                ret = rrtStarUtils.pairToEigenVector(dijRet.node_path);
                 valid_path = true;
             }
             else
             {
-                ret = gbrrtUtils.pairToEigenVector({st, g});
+                ret = rrtStarUtils.pairToEigenVector({st, g});
                 valid_path = false;
             }
             finalItr = itr;
             auto stpTime = high_resolution_clock::now();
             time = duration_cast<milliseconds>(stpTime-stTime).count();
-            // printf("Run Time for Algorithm: %ld ms\n", time);
+            printf("Run Time for Algorithm: %ld ms\n", time);
 
             return ret;
         }
@@ -557,55 +626,6 @@ class MyGBRRT : public GoalBiasRRT2D {
             list<vector<double>> times;
             double tmp_sols = 0;
             vector<double> valid_sols;
-            list<vector<double>> iters;
-            vector<double> tmp_itrs;
-
-            for(auto prob : problems)
-            {
-                for(int run = 0; run < numRuns; run++)
-                {
-                    ret = plan(prob);
-                    if(getValid())
-                    {
-                        tmp_lens.push_back(ret.length());
-                        tmp_times.push_back(getTime());
-                        tmp_itrs.push_back(getItr());
-                        tmp_sols += getValid();
-                    }
-                }
-                valid_sols.push_back(tmp_sols);
-                path_lens.push_back(tmp_lens);
-                times.push_back(tmp_times);
-                iters.push_back(tmp_itrs);
-                tmp_sols = 0;
-                tmp_lens.clear();
-                tmp_times.clear();
-                tmp_itrs.clear();
-            }
-
-            Visualizer::makeBoxPlot(path_lens, ws, "Path Lengths for Goal Biased RRT", "Environments", "Distance [Units]");
-            Visualizer::makeBoxPlot(times, ws, "Computation Time for Goal Biased RRT", "Environments", "Time [ms]");
-            Visualizer::makeBoxPlot(iters, ws, "Number of Iterations for Goal Biased RRT", "Environments", "# of Iterations");
-            Visualizer::makeBarGraph(valid_sols, ws, "Valid Solutions for RRT", "Environments", "Valid Solution Count");
-            Visualizer::showFigures();
-            
-        }
-
-        void benchMarkAlgo(tuple<int, double, double, double> prams, int numRuns, bool smoothing, list<Problem2D> problems, vector<string> ws)
-        {
-            Path2D ret;
-            vector<double> tmp_lens;
-            list<vector<double>> path_lens;
-            vector<double> tmp_times;
-            list<vector<double>> times;
-            double tmp_sols = 0;
-            vector<double> valid_sols;
-
-            setSmoothing(smoothing);
-            setSampleSize(get<0>(prams));
-            setPtRadius(get<1>(prams));
-            setPGoal(get<2>(prams));
-            setEps(get<3>(prams));
 
             for(auto prob : problems)
             {
@@ -627,9 +647,9 @@ class MyGBRRT : public GoalBiasRRT2D {
                 tmp_times.clear();
             }
 
-            Visualizer::makeBoxPlot(path_lens, ws, "Path Lengths for Goal Biased RRT", "Environments", "Distance [Units]");
-            Visualizer::makeBoxPlot(times, ws, "Computation Time for Goal Biased RRT", "Environments", "Time [ms]");
-            Visualizer::makeBarGraph(valid_sols, ws, "Valid Solutions for RRT", "Environments", "Valid Solution Count");
+            Visualizer::makeBoxPlot(path_lens, ws, "Path Lengths for RRT Star", "Environments", "Distance [Units]");
+            Visualizer::makeBoxPlot(times, ws, "Computation Time for RRT Star", "Environments", "Time [ms]");
+            Visualizer::makeBarGraph(valid_sols, ws, "Valid Solutions for RRT Star", "Environments", "Valid Solution Count");
             Visualizer::showFigures();
             
         }
@@ -655,26 +675,34 @@ class MyGBRRT : public GoalBiasRRT2D {
                     {
                         tmp_lens.push_back(ret.length());
                         tmp_times.push_back(getTime());
-                        tmp_itrs.push_back(getItr());
                         tmp_sols += getValid();
                     }
                 }
                 valid_sols.push_back(tmp_sols);
                 path_lens.push_back(tmp_lens);
                 times.push_back(tmp_times);
-                iters.push_back(tmp_itrs);
                 tmp_sols = 0;
                 tmp_lens.clear();
                 tmp_times.clear();
-                tmp_itrs.clear();
             }
 
-            Visualizer::makeBoxPlot(path_lens, ws, "Path Lengths for Goal Biased RRT", "Environments", "Distance [Rads]");
-            Visualizer::makeBoxPlot(times, ws, "Computation Time for Goal Biased RRT", "Environments", "Time [ms]");
-            Visualizer::makeBoxPlot(iters, ws, "Number of Iterations for Goal Biased RRT", "Environments", "# of Iterations");
-            Visualizer::makeBarGraph(valid_sols, ws, "Valid Solutions for RRT", "Environments", "Valid Solution Count");
+            Visualizer::makeBoxPlot(path_lens, ws, "Path Lengths for  RRT Star", "Environments", "Distance [Rads]");
+            Visualizer::makeBoxPlot(times, ws, "Computation Time for  RRT Star", "Environments", "Time [ms]");
+            Visualizer::makeBarGraph(valid_sols, ws, "Valid Solutions for RRT Star", "Environments", "Valid Solution Count");
             Visualizer::showFigures();
             
+        }
+
+        Node checkInMap(map<Node, Eigen::Vector2d> a, Eigen::Vector2d b)
+        {
+            for(auto key : a)
+            {
+                if(key.second[0] == b[0] && key.second[1] == b[1])
+                {
+                    return key.first;
+                }
+            }
+            return -1;
         }
 
         pair<Graph<double>, map<amp::Node, Eigen::Vector2d> > getGraphFromRM()
@@ -716,18 +744,6 @@ class MyGBRRT : public GoalBiasRRT2D {
                 }
             }
             return make_pair(ret1, ret2);
-        }
-
-        Node checkInMap(map<Node, Eigen::Vector2d> a, Eigen::Vector2d b)
-        {
-            for(auto key : a)
-            {
-                if(key.second[0] == b[0] && key.second[1] == b[1])
-                {
-                    return key.first;
-                }
-            }
-            return -1;
         }
 
         void setSampleSize(int a)
@@ -794,12 +810,12 @@ class MyGBRRT : public GoalBiasRRT2D {
             return finalItr;
         }
 
-
-        virtual ~MyGBRRT() {}
+        virtual ~MyRRTStar() {}
     
     private:
         int n;
         double r;
+        double R;
         double eps;
         double p_goal;
         double dis;
@@ -809,6 +825,5 @@ class MyGBRRT : public GoalBiasRRT2D {
         bool valid_path;
         int finalItr;
         map< pair<double,double>, map< pair<double,double>, double > > RM;
-        myUtils gbrrtUtils;
-
+        myUtils rrtStarUtils;
 };

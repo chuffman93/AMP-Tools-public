@@ -8,6 +8,34 @@
 using namespace std;
 using namespace amp;
 
+
+class MyGridCSpace : public amp::GridCSpace2D {
+    public:
+        //MyGridCSpace()
+        //    : amp::GridCSpace2D(1, 1, 0.0, 1.0, 0.0, 1.0) {}
+        MyGridCSpace(double a, std::size_t x0_cells, std::size_t x1_cells, double x0_min, double x0_max, double x1_min, double x1_max)
+            : amp::GridCSpace2D(x0_cells, x1_cells, x0_min, x0_max, x1_min, x1_max) {
+                xMin = x0_min;
+                yMin = x1_min;
+                dis = a;
+            }
+
+        MyGridCSpace(std::size_t x0_cells, std::size_t x1_cells, double x0_min, double x0_max, double x1_min, double x1_max)
+            : amp::GridCSpace2D(x0_cells, x1_cells, x0_min, x0_max, x1_min, x1_max) {
+                xMin = x0_min;
+                yMin = x1_min;
+                dis = 0.25;
+            }
+
+        virtual std::pair<std::size_t, std::size_t> getCellFromPoint(double x0, double x1) const {
+            return make_pair(floor( (x0 - this->xMin)/this->dis ), floor( (x1 - this->yMin)/this->dis ));
+        }
+
+        double dis;
+        double xMin;
+        double yMin;
+};
+
 class myUtils {
     public:
         void hereIsAMethod();
@@ -20,7 +48,7 @@ class myUtils {
         {
             double val = ((b[1] - a[1]) * (c[0] - b[0])) 
                        - ((b[0] - a[0]) * (c[1] - b[1]));
-            if(abs(val) < 1e-2)
+            if(abs(val) < 1e-6)
             {
                 return 0;
             }
@@ -33,10 +61,10 @@ class myUtils {
 
         bool onL(line a, Eigen::Vector2d b)
         {
-            if((b[0] < max(a.p1[0], a.p2[0]) || abs(b[0]-max(a.p1[0], a.p2[0])) < 1e-2) 
-            && (b[0] > min(a.p1[0], a.p2[0]) || abs(b[0]-min(a.p1[0], a.p2[0])) < 1e-2) 
-            && (b[1] < max(a.p1[1], a.p2[1]) || abs(b[1]-max(a.p1[1], a.p2[1])) < 1e-2)
-            && (b[1] > min(a.p1[1], a.p2[1]) || abs(b[1]-min(a.p1[1], a.p2[1])) < 1e-2))
+            if((b[0] < max(a.p1[0], a.p2[0]) || abs(b[0]-max(a.p1[0], a.p2[0])) < 1e-6) 
+            && (b[0] > min(a.p1[0], a.p2[0]) || abs(b[0]-min(a.p1[0], a.p2[0])) < 1e-6) 
+            && (b[1] < max(a.p1[1], a.p2[1]) || abs(b[1]-max(a.p1[1], a.p2[1])) < 1e-6)
+            && (b[1] > min(a.p1[1], a.p2[1]) || abs(b[1]-min(a.p1[1], a.p2[1])) < 1e-6))
             {
                 return true;
             }
@@ -313,6 +341,12 @@ class myUtils {
             q.push_back(st);
 
             int itrCount = 0;
+            if(st == g)
+            {
+                ret.success = true;
+                ret.path_cost = 0;
+                return ret;
+            }
             while(!O.empty())
             {
                 bst = O.top().second;
@@ -517,10 +551,61 @@ class myUtils {
             printf("} is %.2f\n",a.length());
         }
 
-        pair<double, double> newPt(pair<double,double> a, pair<double,double> b, double step_size)
+        vector<double> removeOutliers(vector<double> a)
         {
+            vector<double> ret;
+            auto const q1 = a.size()/4;
+            auto const q2 = a.size()/2;
+            auto const q3 = q1+q2;
+            sort(a.begin(),a.end());
+            for(int i = q1; i < q3; i++)
+            {
+                ret.push_back(a[i]);
+            }
+            return ret;
+        }
+
+        pair<double, double> newPt(pair<double,double> a, pair<double,double> b, double step_size, bool first)
+        {
+            double rad;
             double m = (b.second - a.second) / (b.first - a.first);
-            double rad = atan(m);
+            if(first)
+            {
+                rad = atan2((b.second - a.second), (b.first - a.first));
+            }
+            else
+            {
+                rad = atan(m);
+            }
+            return make_pair(round_double(a.first+step_size*cos(rad),2), round_double(a.second+step_size*sin(rad),2));
+        }
+
+        pair<double, double> newPtWrapped(pair<double,double> a, pair<double,double> b, double step_size, bool first, double xmin, double xmax, double ymin, double ymax)
+        {
+            double rad;
+            double dx = abs(a.first-b.first);
+            double dy = abs(a.second-b.second);
+
+            double yW = ymax - ymin;
+            double xW = xmax - xmin;
+
+            if(dx > (0.5*xW))
+            {
+                dx = xW-dx;
+            }
+            if(dy > (0.5*yW))
+            {
+                dy = yW-dy;
+            }
+            double m = (dy) / (dx);
+            if(first)
+            {
+                rad = atan2((dy), (dx));
+            }
+            else
+            {
+                rad = atan(m);
+            }
             return make_pair(round_double(a.first+step_size*cos(rad),2), round_double(a.second+step_size*sin(rad),2));
         }
 
@@ -550,6 +635,26 @@ class myUtils {
         double euc_dis(pair<double, double> a, pair<double, double> b)
         {
             return sqrt(pow(a.first-b.first,2) + pow(a.second-b.second,2));
+        }
+
+        double euc_disWrapped(pair<double, double> a, pair<double, double> b, double xmin, double xmax, double ymin, double ymax)
+        {
+            double dx = abs(a.first-b.first);
+            double dy = abs(a.second-b.second);
+
+            double yW = ymax - ymin;
+            double xW = xmax - xmin;
+
+            if(dx > (0.5*xW))
+            {
+                dx = xW-dx;
+            }
+            if(dy > (0.5*yW))
+            {
+                dy = yW-dy;
+            }
+
+            return sqrt(pow(dx,2) + pow(dy,2));
         }
 
          double mink_dis(vector<double> a, vector<double> b, double p)
